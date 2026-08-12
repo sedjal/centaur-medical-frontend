@@ -5,7 +5,7 @@ module.exports = defineConfig({
   pages: {
     index: {
       entry: 'example/main.ts',
-      template: 'public/index.html',
+      template: 'example/index.html',
       filename: 'index.html',
       title: 'Centaur Medical',
     },
@@ -19,7 +19,8 @@ module.exports = defineConfig({
     extract: false,
   },
   devServer: {
-    port: 8080,
+    port: 8084,
+    historyApiFallback: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3000',

@@ -1,15 +1,22 @@
-import { defineComponent, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { defineComponent, ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
 export default defineComponent({
   name: 'LoginView',
   setup() {
-    const email = ref('sedjalkhouloud@gmail.com');
-    const password = ref('Admin123!');
+    const route = useRoute();
+    const email = ref('');
+    const password = ref('');
     const auth = useAuthStore();
     const router = useRouter();
     const localError = ref<string | null>(null);
+
+    onMounted(() => {
+      const q = route.query.email;
+      const fromQuery = Array.isArray(q) ? String(q[0] || '') : String(q || '');
+      if (fromQuery) email.value = fromQuery;
+    });
 
     async function onSubmit(e: Event) {
       e.preventDefault();
@@ -20,14 +27,22 @@ export default defineComponent({
           await router.push({ name: 'mfa' });
           return;
         }
-        if (result.status === 'OK') {
-          await router.push({ name: 'dashboard' });
+        if (result.status === 'CHANGE_PASSWORD') {
+          await router.push({ name: 'change-password' });
           return;
         }
-        localError.value = 'Password change required (not implemented in UI).';
+        await router.push({ name: 'dashboard' });
       } catch {
-        localError.value = auth.error || 'Login failed';
+        localError.value = auth.error || 'Échec de connexion';
       }
+    }
+
+    function goForgotPassword(ev: Event) {
+      ev.preventDefault();
+      void router.push({
+        name: 'forgot-password',
+        query: email.value.trim() ? { email: email.value.trim() } : {},
+      });
     }
 
     return () => (
@@ -37,12 +52,12 @@ export default defineComponent({
             <div class="brand-mark">CM</div>
             <div class="brand-text">
               <strong>Centaur Medical</strong>
-              <span>Hospital Patient Management</span>
+              <span>Gestion des dossiers médicaux</span>
             </div>
           </div>
-          <h1 style="margin:0 0 8px;font-size:24px">Sign in</h1>
+          <h1 style="margin:0 0 8px;font-size:24px">Connexion</h1>
           <p style="margin:0 0 24px;color:var(--muted);font-size:14px">
-            Access medical records securely.
+            Accès sécurisé aux dossiers médicaux.
           </p>
           {localError.value && <div class="alert alert-error">{localError.value}</div>}
           <form onSubmit={onSubmit}>
@@ -56,10 +71,11 @@ export default defineComponent({
                   email.value = (ev.target as HTMLInputElement).value;
                 }}
                 required
+                autocomplete="username"
               />
             </div>
             <div class="field">
-              <label>Password</label>
+              <label>Mot de passe</label>
               <input
                 class="input"
                 type="password"
@@ -68,10 +84,24 @@ export default defineComponent({
                   password.value = (ev.target as HTMLInputElement).value;
                 }}
                 required
+                autocomplete="current-password"
               />
             </div>
-            <button class="btn btn-primary" style="width:100%;justify-content:center" disabled={auth.loading}>
-              {auth.loading ? 'Signing in…' : 'Sign in'}
+            <div style="text-align:right;margin:-4px 0 16px">
+              <a
+                href="#/forgot-password"
+                style="font-size:13px;color:var(--primary);font-weight:600"
+                onClick={goForgotPassword}
+              >
+                Mot de passe oublié ?
+              </a>
+            </div>
+            <button
+              class="btn btn-primary"
+              style="width:100%;justify-content:center"
+              disabled={auth.loading}
+            >
+              {auth.loading ? 'Connexion…' : 'Se connecter'}
             </button>
           </form>
         </div>

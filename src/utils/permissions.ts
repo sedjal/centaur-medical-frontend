@@ -6,8 +6,8 @@ export function can(permissions: Permission[] | undefined, permission: Permissio
 
 export function serviceLabel(service: string): string {
   const map: Record<string, string> = {
-    GENERAL: 'Chirurgie Générale',
-    URGENCE: 'Urgence',
+    GENERAL: 'Chirurgie générale',
+    URGENCE: 'Urgences',
     ONCOLOGIE: 'Oncologie',
     CARDIOLOGIE: 'Cardiologie',
   };

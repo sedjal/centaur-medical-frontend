@@ -1,4 +1,5 @@
-export type RoleName = 'ADMIN' | 'DIRECTION' | 'MEDECIN' | 'SECRETAIRE';
+export type SystemRoleName = 'ADMIN' | 'DIRECTION' | 'MEDECIN' | 'SECRETAIRE';
+export type RoleName = SystemRoleName | (string & {});
 export type ServiceType = 'GENERAL' | 'URGENCE' | 'ONCOLOGIE' | 'CARDIOLOGIE';
 export type Permission =
   | 'patients:read'
@@ -72,10 +73,24 @@ export interface PatientFormModel {
   specialty: SpecialtyData;
 }
 
+export interface ServiceOccupancy {
+  service: ServiceType;
+  label: string;
+  occupied: number;
+  capacity: number;
+  available: number;
+  percent: number;
+  load: 'Disponible' | 'Forte charge' | 'Saturé';
+}
+
 export interface DashboardStats {
   total: number;
   critical: number;
+  admittedToday: number;
+  availableBeds: number;
+  totalBeds: number;
   byService: Record<string, number>;
+  occupancy: ServiceOccupancy[];
   recent: Patient[];
 }
 
@@ -99,6 +114,22 @@ export interface AppUser {
   last_name: string;
   is_active: boolean;
   mfa_required: boolean;
+  must_change_password?: boolean;
   role: RoleName;
   created_at: string;
+}
+
+export interface AppRole {
+  id: string;
+  name: string;
+  created_at: string;
+  is_system: boolean;
+  user_count: number;
+  permissions: string[];
+}
+
+export interface AppPermission {
+  id: string;
+  code: string;
+  description: string | null;
 }

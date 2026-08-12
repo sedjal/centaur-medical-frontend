@@ -2,7 +2,7 @@ import { defineComponent, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { getDashboardStats } from '../services/patients';
-import type { DashboardStats } from '../types';
+import type { DashboardStats, ServiceOccupancy } from '../types';
 
 function serviceBadge(service: string) {
   const map: Record<string, string> = {
@@ -12,6 +12,18 @@ function serviceBadge(service: string) {
     GENERAL: 'badge-teal',
   };
   return map[service] || 'badge-blue';
+}
+
+function loadClass(load: ServiceOccupancy['load']) {
+  if (load === 'Saturé') return 'occ-bar danger';
+  if (load === 'Forte charge') return 'occ-bar warning';
+  return 'occ-bar ok';
+}
+
+function loadBadge(load: ServiceOccupancy['load']) {
+  if (load === 'Saturé') return 'badge-red';
+  if (load === 'Forte charge') return 'badge-amber';
+  return 'badge-green';
 }
 
 export default defineComponent({
@@ -28,7 +40,7 @@ export default defineComponent({
       } catch (e: unknown) {
         error.value =
           (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-          'Failed to load dashboard';
+          'Impossible de charger le dashboard';
       }
     });
 
@@ -36,41 +48,69 @@ export default defineComponent({
       <div class="page">
         <div class="page-header">
           <div>
-            <h1>Good morning, {auth.user?.firstName || 'Doctor'}</h1>
-            <p>Here is your hospital overview.</p>
+            <h1>Dashboard</h1>
+            <p>Vue globale de l’établissement — {auth.user?.firstName || 'équipe'}</p>
           </div>
         </div>
 
         {error.value && <div class="alert alert-error">{error.value}</div>}
 
-        <div class="stat-grid">
+        <div class="stat-grid stat-grid-5">
           <div class="card stat-card">
-            <div class="label">Patients</div>
+            <div class="label">Patients actifs</div>
             <div class="value">{stats.value?.total ?? '—'}</div>
           </div>
           <div class="card stat-card">
-            <div class="label">Urgence</div>
+            <div class="label">Admis aujourd’hui</div>
+            <div class="value">{stats.value?.admittedToday ?? '—'}</div>
+          </div>
+          <div class="card stat-card">
+            <div class="label">Lits disponibles</div>
+            <div class="value">{stats.value?.availableBeds ?? '—'}</div>
+            <div class="stat-sub">sur {stats.value?.totalBeds ?? '—'} lits</div>
+          </div>
+          <div class="card stat-card">
+            <div class="label">Cas critiques</div>
+            <div class="value">{stats.value?.critical ?? '—'}</div>
+          </div>
+          <div class="card stat-card">
+            <div class="label">Urgences actuellement</div>
             <div class="value">{stats.value?.byService?.URGENCE ?? 0}</div>
-          </div>
-          <div class="card stat-card">
-            <div class="label">Oncologie</div>
-            <div class="value">{stats.value?.byService?.ONCOLOGIE ?? 0}</div>
-          </div>
-          <div class="card stat-card">
-            <div class="label">Cardiologie</div>
-            <div class="value">{stats.value?.byService?.CARDIOLOGIE ?? 0}</div>
           </div>
         </div>
 
+        <div class="section-head">
+          <h2>Occupation des services</h2>
+        </div>
+        <div class="occ-grid">
+          {(stats.value?.occupancy || []).map((o) => (
+            <div class="card occ-card" key={o.service}>
+              <div class="occ-card-top">
+                <strong>{o.label}</strong>
+                <span class={`badge ${loadBadge(o.load)}`}>{o.load}</span>
+              </div>
+              <div class="occ-meta">
+                {o.occupied} / {o.capacity} lits · {o.available} disponibles
+              </div>
+              <div class="occ-track">
+                <div class={loadClass(o.load)} style={`width:${Math.min(o.percent, 100)}%`} />
+              </div>
+              <div class="occ-percent">{o.percent}%</div>
+            </div>
+          ))}
+        </div>
+
+        <div class="section-head" style="margin-top:8px">
+          <h2>Patients récents</h2>
+        </div>
         <div class="card" style="padding:8px 0">
-          <div style="padding:16px 20px;font-weight:600">Recent patients</div>
           <table class="table">
             <thead>
               <tr>
                 <th>Patient</th>
                 <th>Service</th>
-                <th>Date</th>
-                <th>Status</th>
+                <th>Date d’admission</th>
+                <th>Statut</th>
               </tr>
             </thead>
             <tbody>
@@ -100,14 +140,14 @@ export default defineComponent({
                   <td>{String(p.hospitalization_date).slice(0, 10)}</td>
                   <td>
                     <span class={`badge ${p.status === 'CRITICAL' ? 'badge-red' : 'badge-green'}`}>
-                      {p.status}
+                      {p.status === 'CRITICAL' ? 'Critique' : 'Stable'}
                     </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {!stats.value?.recent?.length && <div class="empty">No patients yet</div>}
+          {!stats.value?.recent?.length && <div class="empty">Aucun patient</div>}
         </div>
       </div>
     );

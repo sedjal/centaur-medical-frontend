@@ -6,6 +6,9 @@ import './styles/global.css';
 
 export function createCentaurMedicalApp(): VueApp {
   const app = createApp(CentaurMedicalApp);
+  app.config.errorHandler = (err, _instance, info) => {
+    console.error('[Centaur Medical]', err, info);
+  };
   app.use(createPinia());
   app.use(createAppRouter());
   return app;

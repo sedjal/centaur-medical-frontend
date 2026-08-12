@@ -1,17 +1,39 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import { createRouter, createWebHashHistory, type RouteRecordRaw, type RouterHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView';
 import MfaView from '../views/MfaView';
+import ChangePasswordView from '../views/ChangePasswordView';
+import ForgotPasswordView from '../views/ForgotPasswordView';
+import ResetPasswordView from '../views/ResetPasswordView';
 import AppLayout from '../components/AppLayout';
 import DashboardView from '../views/DashboardView';
 import PatientsView from '../views/PatientsView';
 import PatientFormView from '../views/PatientFormView';
 import UsersView from '../views/UsersView';
+import RolesView from '../views/RolesView';
 import AuditView from '../views/AuditView';
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
   { path: '/mfa', name: 'mfa', component: MfaView, meta: { public: true } },
+  {
+    path: '/change-password',
+    name: 'change-password',
+    component: ChangePasswordView,
+    meta: { public: true },
+  },
+  {
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: ForgotPasswordView,
+    meta: { public: true },
+  },
+  {
+    path: '/reset-password',
+    name: 'reset-password',
+    component: ResetPasswordView,
+    meta: { public: true },
+  },
   {
     path: '/',
     component: AppLayout,
@@ -21,45 +43,55 @@ const routes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'dashboard',
         component: DashboardView,
-        meta: { title: 'Dashboard' },
+        meta: { title: 'Dashboard', subtitle: "Vue globale de l'établissement" },
       },
       {
         path: 'patients',
         name: 'patients',
         component: PatientsView,
-        meta: { title: 'Patients' },
+        meta: { title: 'Patients', subtitle: 'Dossiers médicaux actifs' },
       },
       {
         path: 'patients/new',
         name: 'patient-create',
         component: PatientFormView,
-        meta: { title: 'New patient', permission: 'patients:create' },
+        meta: { title: 'Nouveau patient', permission: 'patients:create' },
       },
       {
         path: 'patients/:id',
         name: 'patient-edit',
         component: PatientFormView,
-        meta: { title: 'Edit patient', permission: 'patients:update' },
+        meta: { title: 'Fiche patient', permission: 'patients:update' },
       },
       {
         path: 'users',
         name: 'users',
         component: UsersView,
-        meta: { title: 'Users', permission: 'users:read' },
+        meta: { title: 'Utilisateurs', subtitle: 'Comptes et rôles', permission: 'users:read' },
+      },
+      {
+        path: 'roles',
+        name: 'roles',
+        component: RolesView,
+        meta: {
+          title: 'Rôles & permissions',
+          subtitle: 'Contrôle d’accès RBAC',
+          permission: 'roles:manage',
+        },
       },
       {
         path: 'audit',
         name: 'audit',
         component: AuditView,
-        meta: { title: 'Audit logs', permission: 'audit:read' },
+        meta: { title: 'Historique', subtitle: 'Journal des opérations', permission: 'audit:read' },
       },
     ],
   },
 ];
 
-export function createAppRouter() {
+export function createAppRouter(history: RouterHistory = createWebHashHistory()) {
   const router = createRouter({
-    history: createWebHistory(),
+    history,
     routes,
   });
 

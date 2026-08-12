@@ -1,48 +1,8 @@
 import { defineComponent, onMounted, ref, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { createPatient, getPatient, updatePatient } from '../services/patients';
-import type { PatientFormModel, ServiceType, SpecialtyData } from '../types';
-
-function emptySpecialty(): SpecialtyData {
-  return {
-    notes: '',
-    arrivalTime: '',
-    triageLevel: '',
-    initialSeverity: '',
-    tumorType: '',
-    stage: '',
-    currentTreatment: '',
-    ecgResults: '',
-    restingHeartRate: undefined,
-    bloodPressure: '',
-  };
-}
-
-function mapSpecialtyFromApi(service: ServiceType, raw: SpecialtyData | null | undefined): SpecialtyData {
-  const s = raw || {};
-  if (service === 'URGENCE') {
-    return {
-      arrivalTime: s.arrivalTime || s.arrival_time || '',
-      triageLevel: s.triageLevel || s.triage_level || '',
-      initialSeverity: s.initialSeverity || s.initial_severity || '',
-    };
-  }
-  if (service === 'ONCOLOGIE') {
-    return {
-      tumorType: s.tumorType || s.tumor_type || '',
-      stage: s.stage || '',
-      currentTreatment: s.currentTreatment || s.current_treatment || '',
-    };
-  }
-  if (service === 'CARDIOLOGIE') {
-    return {
-      ecgResults: s.ecgResults || s.ecg_results || '',
-      restingHeartRate: s.restingHeartRate ?? s.resting_heart_rate,
-      bloodPressure: s.bloodPressure || s.blood_pressure || '',
-    };
-  }
-  return { notes: s.notes || '' };
-}
+import { emptySpecialty, mapSpecialtyFromApi, validateSpecialty } from '../utils/patientForm';
+import type { PatientFormModel, ServiceType } from '../types';
 
 export default defineComponent({
   name: 'PatientFormView',
@@ -97,6 +57,11 @@ export default defineComponent({
         const payload = { ...form.value, specialty: { ...form.value.specialty } };
         if (payload.specialty.restingHeartRate != null) {
           payload.specialty.restingHeartRate = Number(payload.specialty.restingHeartRate);
+        }
+        const invalid = validateSpecialty(payload.service, payload.specialty);
+        if (invalid) {
+          error.value = invalid;
+          return;
         }
         if (isEdit.value) {
           await updatePatient(String(route.params.id), payload);

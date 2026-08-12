@@ -4,3 +4,5 @@ coverage/
 .DS_Store
 *.log
 .env.local
+.tap/
+tap-results.txt

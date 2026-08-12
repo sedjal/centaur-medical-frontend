@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = process.env.VUE_APP_API_URL || 'http://127.0.0.1:3000/api/v1';
+const baseURL = process.env.VUE_APP_API_URL || '/api';
 
 export const api = axios.create({
   baseURL,
@@ -20,10 +20,17 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
-      const path = window.location.pathname;
-      if (!path.includes('/login') && !path.includes('/mfa')) {
+      const hash = window.location.hash || '';
+      const publicAuth =
+        hash.includes('/login') ||
+        hash.includes('/mfa') ||
+        hash.includes('/change-password') ||
+        hash.includes('/forgot-password') ||
+        hash.includes('/reset-password');
+      if (!publicAuth) {
         localStorage.removeItem('centaur_token');
         localStorage.removeItem('centaur_mfa_token');
+        localStorage.removeItem('centaur_temp_token');
       }
     }
     return Promise.reject(error);

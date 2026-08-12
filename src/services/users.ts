@@ -1,5 +1,5 @@
 import api from './api';
-import type { AppUser, RoleName } from '../types';
+import type { AppUser, AppRole, AppPermission, RoleName } from '../types';
 
 export async function listUsers() {
   const { data } = await api.get<AppUser[]>('/users');
@@ -27,5 +27,30 @@ export async function updateUser(
 
 export async function deleteUser(id: string) {
   const { data } = await api.delete(`/users/${id}`);
+  return data;
+}
+
+export async function listRoles() {
+  const { data } = await api.get<AppRole[]>('/roles');
+  return data;
+}
+
+export async function listPermissions() {
+  const { data } = await api.get<AppPermission[]>('/permissions');
+  return data;
+}
+
+export async function createRole(payload: { name: string; permissions: string[] }) {
+  const { data } = await api.post('/roles', payload);
+  return data;
+}
+
+export async function updateRolePermissions(id: string, permissions: string[]) {
+  const { data } = await api.put(`/roles/${id}/permissions`, { permissions });
+  return data;
+}
+
+export async function deleteRole(id: string) {
+  const { data } = await api.delete(`/roles/${id}`);
   return data;
 }

@@ -15,7 +15,7 @@
     "paths": {
       "@/*": ["src/*"]
     },
-    "types": ["webpack-env", "jest"]
+    "types": ["webpack-env"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "example/**/*.ts", "tests/**/*.ts", "tests/**/*.tsx"],
   "exclude": ["node_modules"]

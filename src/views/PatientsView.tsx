@@ -1,8 +1,9 @@
-import { defineComponent, onMounted, ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { defineComponent, onMounted, ref, computed, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { listPatients, deletePatient } from '../services/patients';
 import type { Patient, ServiceType } from '../types';
+import { serviceLabel } from '../utils/permissions';
 
 const SERVICES: Array<ServiceType | ''> = ['', 'GENERAL', 'URGENCE', 'ONCOLOGIE', 'CARDIOLOGIE'];
 
@@ -21,6 +22,7 @@ export default defineComponent({
   setup() {
     const auth = useAuthStore();
     const router = useRouter();
+    const route = useRoute();
     const patients = ref<Patient[]>([]);
     const search = ref('');
     const service = ref<ServiceType | ''>('');
@@ -31,6 +33,16 @@ export default defineComponent({
     const canCreate = computed(() => auth.hasPermission('patients:create'));
     const canUpdate = computed(() => auth.hasPermission('patients:update'));
     const canDelete = computed(() => auth.hasPermission('patients:delete'));
+
+    function syncServiceFromRoute() {
+      const q = route.query.service;
+      const val = Array.isArray(q) ? q[0] : q;
+      if (val && SERVICES.includes(val as ServiceType)) {
+        service.value = val as ServiceType;
+      } else if (!val) {
+        service.value = '';
+      }
+    }
 
     async function load() {
       loading.value = true;
@@ -43,17 +55,28 @@ export default defineComponent({
       } catch (e: unknown) {
         error.value =
           (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-          'Failed to load patients';
+          'Impossible de charger les patients';
       } finally {
         loading.value = false;
       }
     }
 
-    onMounted(load);
+    onMounted(() => {
+      syncServiceFromRoute();
+      void load();
+    });
+
+    watch(
+      () => route.query.service,
+      () => {
+        syncServiceFromRoute();
+        void load();
+      }
+    );
 
     async function onDelete(id: string, name: string) {
       if (!canDelete.value) return;
-      if (!confirm(`Delete patient ${name}?`)) return;
+      if (!confirm(`Supprimer le patient ${name} ?`)) return;
       try {
         await deletePatient(id);
         openMenu.value = null;
@@ -61,8 +84,17 @@ export default defineComponent({
       } catch (e: unknown) {
         error.value =
           (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-          'Delete failed';
+          'Suppression impossible';
       }
+    }
+
+    function onServiceChange(val: ServiceType | '') {
+      service.value = val;
+      void router.replace({
+        name: 'patients',
+        query: val ? { service: val } : {},
+      });
+      void load();
     }
 
     return () => (
@@ -70,20 +102,26 @@ export default defineComponent({
         <div class="page-header">
           <div>
             <h1>Patients</h1>
-            <p>Manage hospital patients and medical records.</p>
+            <p>
+              {service.value
+                ? `Service : ${serviceLabel(service.value)}`
+                : 'Gestion des patients et dossiers médicaux.'}
+            </p>
           </div>
           {canCreate.value && (
             <button class="btn btn-primary" onClick={() => router.push({ name: 'patient-create' })}>
-              + New patient
+              + Nouveau patient
             </button>
           )}
         </div>
+
+        {error.value && <div class="alert alert-error">{error.value}</div>}
 
         <div class="toolbar">
           <input
             class="input"
             style="max-width:320px"
-            placeholder="Search patient…"
+            placeholder="Rechercher un patient…"
             value={search.value}
             onInput={(ev: Event) => {
               search.value = (ev.target as HTMLInputElement).value;
@@ -94,37 +132,32 @@ export default defineComponent({
           />
           <select
             class="select"
-            style="max-width:200px"
+            style="max-width:220px"
             value={service.value}
             onChange={(ev: Event) => {
-              service.value = (ev.target as HTMLSelectElement).value as ServiceType | '';
-              void load();
+              onServiceChange((ev.target as HTMLSelectElement).value as ServiceType | '');
             }}
           >
-            <option value="">All services</option>
+            <option value="">Tous les services</option>
             {SERVICES.filter(Boolean).map((s) => (
-              <option key={s as string} value={s as string}>
-                {s as string}
-              </option>
+              <option value={s}>{serviceLabel(String(s))}</option>
             ))}
           </select>
           <button class="btn btn-ghost" onClick={() => void load()}>
-            Search
+            Filtrer
           </button>
         </div>
 
-        {error.value && <div class="alert alert-error">{error.value}</div>}
-
         <div class="card" style="padding:8px 0;position:relative">
-          {loading.value && <div class="empty">Loading…</div>}
+          {loading.value && <div class="empty">Chargement…</div>}
           {!loading.value && (
             <table class="table">
               <thead>
                 <tr>
                   <th>Patient</th>
                   <th>Service</th>
-                  <th>Hospitalized</th>
-                  <th>Status</th>
+                  <th>Admission</th>
+                  <th>Statut</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -146,12 +179,12 @@ export default defineComponent({
                       </div>
                     </td>
                     <td>
-                      <span class={`badge ${serviceBadge(p.service)}`}>{p.service}</span>
+                      <span class={`badge ${serviceBadge(p.service)}`}>{serviceLabel(p.service)}</span>
                     </td>
                     <td>{String(p.hospitalization_date).slice(0, 10)}</td>
                     <td>
                       <span class={`badge ${p.status === 'CRITICAL' ? 'badge-red' : 'badge-green'}`}>
-                        {p.status}
+                        {p.status === 'CRITICAL' ? 'Critique' : 'Stable'}
                       </span>
                     </td>
                     <td style="position:relative">
@@ -171,9 +204,11 @@ export default defineComponent({
                           {canUpdate.value && (
                             <button
                               class="btn btn-ghost"
-                              onClick={() => router.push({ name: 'patient-edit', params: { id: p.id } })}
+                              onClick={() =>
+                                router.push({ name: 'patient-edit', params: { id: p.id } })
+                              }
                             >
-                              Edit patient
+                              Voir / modifier
                             </button>
                           )}
                           {canDelete.value && (
@@ -183,12 +218,12 @@ export default defineComponent({
                                 void onDelete(p.id, `${p.first_name} ${p.last_name}`)
                               }
                             >
-                              Delete patient
+                              Supprimer
                             </button>
                           )}
                           {!canUpdate.value && !canDelete.value && (
                             <span style="padding:8px;font-size:13px;color:var(--muted)">
-                              View only
+                              Lecture seule
                             </span>
                           )}
                         </div>
@@ -200,7 +235,7 @@ export default defineComponent({
             </table>
           )}
           {!loading.value && !patients.value.length && (
-            <div class="empty">No patients found</div>
+            <div class="empty">Aucun patient trouvé</div>
           )}
         </div>
       </div>

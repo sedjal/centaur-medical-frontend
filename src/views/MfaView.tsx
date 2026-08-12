@@ -17,35 +17,47 @@ export default defineComponent({
         await auth.verifyMfa(code.value.trim());
         await router.push({ name: 'dashboard' });
       } catch {
-        localError.value = auth.error || 'Invalid code';
+        localError.value = auth.error || 'Code invalide';
       }
     }
 
     return () => (
       <div class="auth-page">
         <div class="card auth-card">
-          <h1 style="margin:0 0 8px;font-size:24px">Two-factor authentication</h1>
+          <div class="brand" style="padding:0 0 20px">
+            <div class="brand-mark">CM</div>
+            <div class="brand-text">
+              <strong>Centaur Medical</strong>
+              <span>Vérification MFA</span>
+            </div>
+          </div>
+          <h1 style="margin:0 0 8px;font-size:24px">Double authentification</h1>
           <p style="margin:0 0 24px;color:var(--muted);font-size:14px">
-            Enter the 6-digit code sent to your email. In dev, check the auth-service console.
+            Saisissez le code à 6 chiffres envoyé par email. En local sans SMTP, le code apparaît
+            dans la console du auth-service.
           </p>
           {localError.value && <div class="alert alert-error">{localError.value}</div>}
           <form onSubmit={onSubmit}>
             <div class="field">
-              <label>Verification code</label>
+              <label>Code de vérification</label>
               <input
                 class="input"
                 inputmode="numeric"
                 maxlength={6}
                 value={code.value}
                 onInput={(ev: Event) => {
-                  code.value = (ev.target as HTMLInputElement).value;
+                  code.value = (ev.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 6);
                 }}
                 placeholder="000000"
                 required
               />
             </div>
-            <button class="btn btn-primary" style="width:100%;justify-content:center" disabled={auth.loading}>
-              {auth.loading ? 'Verifying…' : 'Verify'}
+            <button
+              class="btn btn-primary"
+              style="width:100%;justify-content:center"
+              disabled={auth.loading}
+            >
+              {auth.loading ? 'Vérification…' : 'Valider'}
             </button>
           </form>
         </div>

@@ -22,8 +22,8 @@ export default defineComponent({
       <div class="page">
         <div class="page-header">
           <div>
-            <h1>Audit logs</h1>
-            <p>Trace sensitive medical record operations.</p>
+            <h1>Historique</h1>
+            <p>Journal des opérations sensibles sur les dossiers médicaux.</p>
           </div>
         </div>
         {error.value && <div class="alert alert-error">{error.value}</div>}
