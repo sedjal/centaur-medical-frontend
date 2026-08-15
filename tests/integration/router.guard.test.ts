@@ -85,6 +85,45 @@ test('intégration router: sans patients:create → /patients/new redirige dashb
   }
 });
 
+test('intégration router: sans patients:read → /patients redirige dashboard', async (t) => {
+  localStorage.clear();
+  try {
+    const { wrapper, router } = await boot(true, ['users:read']);
+    await router.push('/patients');
+    await flushPromises();
+    t.equal(router.currentRoute.value.name, 'dashboard');
+    wrapper.unmount();
+  } finally {
+    t.end();
+  }
+});
+
+test('intégration router: patients:read → /patients/:id (detail) autorisé', async (t) => {
+  localStorage.clear();
+  try {
+    const { wrapper, router } = await boot(true, ['patients:read']);
+    await router.push('/patients/p1');
+    await flushPromises();
+    t.equal(router.currentRoute.value.name, 'patient-detail');
+    wrapper.unmount();
+  } finally {
+    t.end();
+  }
+});
+
+test('intégration router: sans patients:update → /patients/:id/edit redirige dashboard', async (t) => {
+  localStorage.clear();
+  try {
+    const { wrapper, router } = await boot(true, ['patients:read']);
+    await router.push('/patients/p1/edit');
+    await flushPromises();
+    t.equal(router.currentRoute.value.name, 'dashboard');
+    wrapper.unmount();
+  } finally {
+    t.end();
+  }
+});
+
 test('intégration router: users:read → /users autorisé', async (t) => {
   localStorage.clear();
   try {
@@ -92,6 +131,58 @@ test('intégration router: users:read → /users autorisé', async (t) => {
     await router.push('/users');
     await flushPromises();
     t.equal(router.currentRoute.value.name, 'users');
+    wrapper.unmount();
+  } finally {
+    t.end();
+  }
+});
+
+test('intégration router: sans medical_history:read → /history redirige dashboard', async (t) => {
+  localStorage.clear();
+  try {
+    const { wrapper, router } = await boot(true, ['patients:read']);
+    await router.push('/history');
+    await flushPromises();
+    t.equal(router.currentRoute.value.name, 'dashboard');
+    wrapper.unmount();
+  } finally {
+    t.end();
+  }
+});
+
+test('intégration router: medical_history:read → /history autorisé', async (t) => {
+  localStorage.clear();
+  try {
+    const { wrapper, router } = await boot(true, ['medical_history:read']);
+    await router.push('/history');
+    await flushPromises();
+    t.equal(router.currentRoute.value.name, 'history');
+    wrapper.unmount();
+  } finally {
+    t.end();
+  }
+});
+
+test('intégration router: sans notifications:read → /notifications redirige dashboard', async (t) => {
+  localStorage.clear();
+  try {
+    const { wrapper, router } = await boot(true, ['patients:read']);
+    await router.push('/notifications');
+    await flushPromises();
+    t.equal(router.currentRoute.value.name, 'dashboard');
+    wrapper.unmount();
+  } finally {
+    t.end();
+  }
+});
+
+test('intégration router: notifications:read → /notifications autorisé', async (t) => {
+  localStorage.clear();
+  try {
+    const { wrapper, router } = await boot(true, ['notifications:read']);
+    await router.push('/notifications');
+    await flushPromises();
+    t.equal(router.currentRoute.value.name, 'notifications');
     wrapper.unmount();
   } finally {
     t.end();

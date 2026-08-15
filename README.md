@@ -78,7 +78,9 @@ tests/
 
 ## Token storage
 
-Les JWT (`centaur_token`, `centaur_mfa_token`, `centaur_temp_token`) sont dans **`localStorage`**. Un XSS peut les lire. Mitigations : TTL court, purge sur 401 (hors pages auth) et au logout. Cookie `HttpOnly` = évolution P2.
+Les JWT (`centaur_token`, `centaur_mfa_token`, `centaur_temp_token`) sont dans **`localStorage`**. Un XSS peut les lire. Mitigations : TTL court, purge sur 401 (hors pages auth) et au logout.
+
+**Production** : access **15 min** + refresh en cookie **HttpOnly**. Le frontend masque les services via `service:*` ; le backend bloque (403).
 
 ## Seed users (backend)
 

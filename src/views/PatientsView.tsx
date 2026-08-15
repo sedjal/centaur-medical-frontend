@@ -1,21 +1,47 @@
-import { defineComponent, onMounted, ref, computed, watch } from 'vue';
+import { defineComponent, onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import { listPatients, deletePatient } from '../services/patients';
+import { usePatients } from '../composables/usePatients';
 import type { Patient, ServiceType } from '../types';
-import { serviceLabel } from '../utils/permissions';
+import { serviceLabel, allowedHospitalServices, formatDate } from '../utils/permissions';
+import {
+  PageHeader,
+  Button,
+  Badge,
+  Card,
+  ErrorState,
+  ConfirmDialog,
+  DataTable,
+  type DataTableColumn,
+  type BadgeVariant,
+} from '../components/ui';
 
-const SERVICES: Array<ServiceType | ''> = ['', 'GENERAL', 'URGENCE', 'ONCOLOGIE', 'CARDIOLOGIE'];
-
-function serviceBadge(service: string) {
-  const map: Record<string, string> = {
-    URGENCE: 'badge-red',
-    ONCOLOGIE: 'badge-amber',
-    CARDIOLOGIE: 'badge-blue',
-    GENERAL: 'badge-teal',
+function serviceBadgeVariant(service: string): BadgeVariant {
+  const map: Record<string, BadgeVariant> = {
+    URGENCE: 'danger',
+    ONCOLOGIE: 'warning',
+    CARDIOLOGIE: 'info',
+    GENERAL: 'success',
   };
-  return map[service] || 'badge-blue';
+  return map[service] || 'default';
 }
+
+/** Statuts réellement utilisés par le backend patient-service. */
+function statusBadgeVariant(status: string): BadgeVariant {
+  const s = String(status || '').toUpperCase();
+  if (s === 'CRITICAL') return 'danger';
+  if (s === 'STABLE') return 'success';
+  return 'default';
+}
+
+function statusLabel(status: string): string {
+  const s = String(status || '').toUpperCase();
+  if (s === 'CRITICAL') return 'Critique';
+  if (s === 'STABLE') return 'Stable';
+  return status || '—';
+}
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default defineComponent({
   name: 'PatientsView',
@@ -23,47 +49,58 @@ export default defineComponent({
     const auth = useAuthStore();
     const router = useRouter();
     const route = useRoute();
-    const patients = ref<Patient[]>([]);
     const search = ref('');
     const service = ref<ServiceType | ''>('');
-    const loading = ref(false);
-    const error = ref<string | null>(null);
-    const openMenu = ref<string | null>(null);
+    const deleteTarget = ref<{ id: string; name: string } | null>(null);
+    const deleting = ref(false);
+    const deleteError = ref<string | null>(null);
+    let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
+    const { patients, loading, errorMessage, fetchPatients, deletePatient } = usePatients();
+
+    const canRead = computed(() => auth.hasPermission('patients:read'));
     const canCreate = computed(() => auth.hasPermission('patients:create'));
     const canUpdate = computed(() => auth.hasPermission('patients:update'));
     const canDelete = computed(() => auth.hasPermission('patients:delete'));
+    const allowedServices = computed(() => allowedHospitalServices(auth.user?.permissions));
+    const hasActiveFilters = computed(() => Boolean(search.value.trim() || service.value));
 
     function syncServiceFromRoute() {
       const q = route.query.service;
       const val = Array.isArray(q) ? q[0] : q;
-      if (val && SERVICES.includes(val as ServiceType)) {
+      if (val && allowedServices.value.includes(val as ServiceType)) {
         service.value = val as ServiceType;
-      } else if (!val) {
+      } else {
         service.value = '';
       }
     }
 
     async function load() {
-      loading.value = true;
-      error.value = null;
+      deleteError.value = null;
       try {
-        patients.value = await listPatients({
-          search: search.value || undefined,
+        await fetchPatients({
+          search: search.value.trim() || undefined,
           service: service.value || undefined,
         });
-      } catch (e: unknown) {
-        error.value =
-          (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-          'Impossible de charger les patients';
-      } finally {
-        loading.value = false;
+      } catch {
+        /* errorMessage set by composable */
       }
+    }
+
+    function scheduleSearch() {
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        void load();
+      }, SEARCH_DEBOUNCE_MS);
     }
 
     onMounted(() => {
       syncServiceFromRoute();
       void load();
+    });
+
+    onUnmounted(() => {
+      if (searchTimer) clearTimeout(searchTimer);
     });
 
     watch(
@@ -74,17 +111,19 @@ export default defineComponent({
       }
     );
 
-    async function onDelete(id: string, name: string) {
-      if (!canDelete.value) return;
-      if (!confirm(`Supprimer le patient ${name} ?`)) return;
+    async function confirmDelete() {
+      if (!canDelete.value || !deleteTarget.value) return;
+      deleting.value = true;
+      deleteError.value = null;
       try {
-        await deletePatient(id);
-        openMenu.value = null;
+        await deletePatient(deleteTarget.value.id);
+        deleteTarget.value = null;
         await load();
-      } catch (e: unknown) {
-        error.value =
-          (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-          'Suppression impossible';
+      } catch {
+        deleteError.value = 'Suppression impossible.';
+        deleteTarget.value = null;
+      } finally {
+        deleting.value = false;
       }
     }
 
@@ -97,25 +136,111 @@ export default defineComponent({
       void load();
     }
 
+    const columns = computed<DataTableColumn<Patient>[]>(() => [
+      {
+        key: 'patient_code',
+        label: 'Code',
+        className: 'col-code',
+      },
+      {
+        key: 'last_name',
+        label: 'Nom',
+        render: (row) => String(row.last_name || '').toUpperCase(),
+      },
+      {
+        key: 'first_name',
+        label: 'Prénom',
+      },
+      {
+        key: 'service',
+        label: 'Service',
+        render: (row) => (
+          <Badge variant={serviceBadgeVariant(row.service)}>{serviceLabel(row.service)}</Badge>
+        ),
+      },
+      {
+        key: 'hospitalization_date',
+        label: 'Hospitalisation',
+        render: (row) => formatDate(String(row.hospitalization_date)),
+      },
+      {
+        key: 'status',
+        label: 'Statut',
+        render: (row) => (
+          <Badge variant={statusBadgeVariant(row.status)}>{statusLabel(row.status)}</Badge>
+        ),
+      },
+      {
+        key: 'actions',
+        label: 'Actions',
+        className: 'col-actions',
+        render: (row) => (
+          <div class="row-actions">
+            {canRead.value && (
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Voir le patient ${row.last_name} ${row.first_name}`}
+                onClick={() => router.push({ name: 'patient-detail', params: { id: row.id } })}
+              >
+                Voir
+              </Button>
+            )}
+            {canUpdate.value && (
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label={`Modifier le patient ${row.last_name} ${row.first_name}`}
+                onClick={() => router.push({ name: 'patient-edit', params: { id: row.id } })}
+              >
+                Modifier
+              </Button>
+            )}
+            {canDelete.value && (
+              <Button
+                variant="danger"
+                size="sm"
+                aria-label={`Supprimer le patient ${row.last_name} ${row.first_name}`}
+                onClick={() => {
+                  deleteTarget.value = {
+                    id: row.id,
+                    name: `${String(row.last_name || '').toUpperCase()} ${row.first_name}`,
+                  };
+                }}
+              >
+                Supprimer
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ]);
+
     return () => (
       <div class="page">
-        <div class="page-header">
-          <div>
-            <h1>Patients</h1>
-            <p>
-              {service.value
-                ? `Service : ${serviceLabel(service.value)}`
-                : 'Gestion des patients et dossiers médicaux.'}
-            </p>
-          </div>
-          {canCreate.value && (
-            <button class="btn btn-primary" onClick={() => router.push({ name: 'patient-create' })}>
-              + Nouveau patient
-            </button>
-          )}
-        </div>
+        <PageHeader
+          title="Patients"
+          description={
+            service.value
+              ? `Service : ${serviceLabel(service.value)}`
+              : 'Gestion des dossiers patients'
+          }
+          actions={
+            canCreate.value ? (
+              <Button onClick={() => router.push({ name: 'patient-create' })}>
+                + Ajouter un patient
+              </Button>
+            ) : undefined
+          }
+        />
 
-        {error.value && <div class="alert alert-error">{error.value}</div>}
+        {(errorMessage.value || deleteError.value) && (
+          <ErrorState
+            title={deleteError.value ? 'Suppression échouée' : 'Impossible de charger les patients'}
+            message={deleteError.value || errorMessage.value || ''}
+            retry={() => void load()}
+          />
+        )}
 
         <div class="toolbar">
           <input
@@ -123,121 +248,75 @@ export default defineComponent({
             style="max-width:320px"
             placeholder="Rechercher un patient…"
             value={search.value}
+            aria-label="Rechercher un patient"
             onInput={(ev: Event) => {
               search.value = (ev.target as HTMLInputElement).value;
+              scheduleSearch();
             }}
             onKeyup={(ev: KeyboardEvent) => {
-              if (ev.key === 'Enter') void load();
+              if (ev.key === 'Enter') {
+                if (searchTimer) clearTimeout(searchTimer);
+                void load();
+              }
             }}
           />
           <select
             class="select"
             style="max-width:220px"
             value={service.value}
+            aria-label="Filtrer par service"
             onChange={(ev: Event) => {
               onServiceChange((ev.target as HTMLSelectElement).value as ServiceType | '');
             }}
           >
             <option value="">Tous les services</option>
-            {SERVICES.filter(Boolean).map((s) => (
-              <option value={s}>{serviceLabel(String(s))}</option>
+            {allowedServices.value.map((s) => (
+              <option value={s}>{serviceLabel(s)}</option>
             ))}
           </select>
-          <button class="btn btn-ghost" onClick={() => void load()}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              if (searchTimer) clearTimeout(searchTimer);
+              void load();
+            }}
+          >
             Filtrer
-          </button>
+          </Button>
         </div>
 
-        <div class="card" style="padding:8px 0;position:relative">
-          {loading.value && <div class="empty">Chargement…</div>}
-          {!loading.value && (
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Patient</th>
-                  <th>Service</th>
-                  <th>Admission</th>
-                  <th>Statut</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {patients.value.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <div class="patient-cell">
-                        <div class="avatar">
-                          {p.first_name[0]}
-                          {p.last_name[0]}
-                        </div>
-                        <div>
-                          <div>
-                            {p.first_name} {p.last_name}
-                          </div>
-                          <div style="font-size:12px;color:var(--muted)">{p.patient_code}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span class={`badge ${serviceBadge(p.service)}`}>{serviceLabel(p.service)}</span>
-                    </td>
-                    <td>{String(p.hospitalization_date).slice(0, 10)}</td>
-                    <td>
-                      <span class={`badge ${p.status === 'CRITICAL' ? 'badge-red' : 'badge-green'}`}>
-                        {p.status === 'CRITICAL' ? 'Critique' : 'Stable'}
-                      </span>
-                    </td>
-                    <td style="position:relative">
-                      <button
-                        class="btn btn-ghost"
-                        onClick={() => {
-                          openMenu.value = openMenu.value === p.id ? null : p.id;
-                        }}
-                      >
-                        ⋮
-                      </button>
-                      {openMenu.value === p.id && (
-                        <div
-                          class="card"
-                          style="position:absolute;right:16px;top:48px;z-index:5;min-width:160px;padding:8px;display:flex;flex-direction:column;gap:4px"
-                        >
-                          {canUpdate.value && (
-                            <button
-                              class="btn btn-ghost"
-                              onClick={() =>
-                                router.push({ name: 'patient-edit', params: { id: p.id } })
-                              }
-                            >
-                              Voir / modifier
-                            </button>
-                          )}
-                          {canDelete.value && (
-                            <button
-                              class="btn btn-danger"
-                              onClick={() =>
-                                void onDelete(p.id, `${p.first_name} ${p.last_name}`)
-                              }
-                            >
-                              Supprimer
-                            </button>
-                          )}
-                          {!canUpdate.value && !canDelete.value && (
-                            <span style="padding:8px;font-size:13px;color:var(--muted)">
-                              Lecture seule
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {!loading.value && !patients.value.length && (
-            <div class="empty">Aucun patient trouvé</div>
-          )}
-        </div>
+        <Card padding="none">
+          <DataTable
+            columns={columns.value}
+            rows={patients.value}
+            rowKey="id"
+            loading={loading.value}
+            emptyTitle={
+              hasActiveFilters.value
+                ? 'Aucun patient ne correspond à vos critères.'
+                : 'Aucun patient trouvé'
+            }
+            emptyDescription={
+              hasActiveFilters.value
+                ? 'Modifiez la recherche ou le filtre service.'
+                : 'Aucun dossier dans votre périmètre de service.'
+            }
+          />
+        </Card>
+
+        <ConfirmDialog
+          open={Boolean(deleteTarget.value)}
+          title="Supprimer le patient"
+          message="Êtes-vous sûr de vouloir supprimer ce patient ?"
+          confirmLabel="Supprimer"
+          cancelLabel="Annuler"
+          danger
+          loading={deleting.value}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => {
+            deleteTarget.value = null;
+          }}
+        />
       </div>
     );
   },

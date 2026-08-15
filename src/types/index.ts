@@ -6,6 +6,14 @@ export type Permission =
   | 'patients:create'
   | 'patients:update'
   | 'patients:delete'
+  | 'prescriptions:read'
+  | 'prescriptions:create'
+  | 'prescriptions:cancel'
+  | 'medical_history:read'
+  | 'notifications:read'
+  | 'notifications:create'
+  | 'notifications:read_all'
+  | 'notifications:cancel'
   | 'service:general'
   | 'service:urgence'
   | 'service:oncologie'
@@ -132,4 +140,106 @@ export interface AppPermission {
   id: string;
   code: string;
   description: string | null;
+}
+
+export type PrescriptionStatus = 'ACTIVE' | 'CANCELLED';
+
+export interface PrescriptionMedication {
+  id: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions?: string | null;
+}
+
+export interface Prescription {
+  id: string;
+  patientId: string;
+  doctorId?: string | null;
+  doctorName?: string | null;
+  prescribedAt: string;
+  status: PrescriptionStatus;
+  notes?: string | null;
+  medications: PrescriptionMedication[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PrescriptionMedicationInput {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions?: string | null;
+}
+
+export interface PrescriptionCreatePayload {
+  patientId: string;
+  prescribedAt: string;
+  notes?: string | null;
+  medications: PrescriptionMedicationInput[];
+}
+
+export type MedicalHistoryEventType =
+  | 'HOSPITALIZATION'
+  | 'CONSULTATION'
+  | 'DIAGNOSIS'
+  | 'PRESCRIPTION'
+  | 'RECORD_UPDATE';
+
+export interface MedicalHistoryItem {
+  id: string;
+  patientId: string;
+  eventType: MedicalHistoryEventType;
+  occurredAt: string;
+  service: ServiceType;
+  doctorId: string | null;
+  doctorName: string | null;
+  summary: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface MedicalHistoryList {
+  items: MedicalHistoryItem[];
+  total: number;
+}
+
+export type NotificationType =
+  | 'GENERAL'
+  | 'PATIENT'
+  | 'PRESCRIPTION'
+  | 'MEDICAL_HISTORY'
+  | 'REMINDER';
+
+export type NotificationStatus = 'PENDING' | 'SENT' | 'READ' | 'CANCELLED';
+
+export interface AppNotification {
+  id: string;
+  recipientId: string;
+  patientId: string | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  scheduledAt: string;
+  sentAt: string | null;
+  readAt: string | null;
+  status: NotificationStatus;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationList {
+  items: AppNotification[];
+  total: number;
+}
+
+export interface NotificationCreatePayload {
+  recipientId: string;
+  patientId?: string | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  scheduledAt: string;
 }

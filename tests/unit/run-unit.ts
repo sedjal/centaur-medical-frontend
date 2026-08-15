@@ -6,3 +6,8 @@ import './usersService.test';
 import './patientsService.test';
 import './authStore.test';
 import './userStore.test';
+import './ui.components.test';
+import './api.composables.test';
+import './prescriptions.api.test';
+import './medical-history.api.test';
+import './notifications.api.test';

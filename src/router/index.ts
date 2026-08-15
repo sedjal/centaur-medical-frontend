@@ -9,6 +9,10 @@ import AppLayout from '../components/AppLayout';
 import DashboardView from '../views/DashboardView';
 import PatientsView from '../views/PatientsView';
 import PatientFormView from '../views/PatientFormView';
+import PatientDetailView from '../views/PatientDetailView';
+import PrescriptionsView from '../views/PrescriptionsView';
+import HistoryView from '../views/HistoryView';
+import NotificationsView from '../views/NotificationsView';
 import UsersView from '../views/UsersView';
 import RolesView from '../views/RolesView';
 import AuditView from '../views/AuditView';
@@ -49,7 +53,11 @@ const routes: RouteRecordRaw[] = [
         path: 'patients',
         name: 'patients',
         component: PatientsView,
-        meta: { title: 'Patients', subtitle: 'Dossiers médicaux actifs' },
+        meta: {
+          title: 'Patients',
+          subtitle: 'Dossiers médicaux actifs',
+          permission: 'patients:read',
+        },
       },
       {
         path: 'patients/new',
@@ -58,10 +66,46 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Nouveau patient', permission: 'patients:create' },
       },
       {
-        path: 'patients/:id',
+        path: 'patients/:id/edit',
         name: 'patient-edit',
         component: PatientFormView,
-        meta: { title: 'Fiche patient', permission: 'patients:update' },
+        meta: { title: 'Modifier le patient', permission: 'patients:update' },
+      },
+      {
+        path: 'patients/:id',
+        name: 'patient-detail',
+        component: PatientDetailView,
+        meta: {
+          title: 'Dossier patient',
+          subtitle: 'Consultation du dossier',
+          permission: 'patients:read',
+        },
+      },
+      {
+        path: 'prescriptions',
+        name: 'prescriptions',
+        component: PrescriptionsView,
+        meta: { title: 'Prescriptions', subtitle: 'Ordonnances médicales', permission: 'prescriptions:read' },
+      },
+      {
+        path: 'history',
+        name: 'history',
+        component: HistoryView,
+        meta: {
+          title: 'Historique médical',
+          subtitle: 'Activité clinique',
+          permission: 'medical_history:read',
+        },
+      },
+      {
+        path: 'notifications',
+        name: 'notifications',
+        component: NotificationsView,
+        meta: {
+          title: 'Notifications',
+          subtitle: 'Alertes et rappels',
+          permission: 'notifications:read',
+        },
       },
       {
         path: 'users',

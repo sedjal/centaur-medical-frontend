@@ -15,6 +15,21 @@ module.exports = defineConfig({
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
     },
   },
+  chainWebpack(config) {
+    // Ne pas typechecker les tests pendant `serve` / `build`
+    if (config.plugins.has('fork-ts-checker')) {
+      config.plugin('fork-ts-checker').tap((args) => {
+        const option = args[0] || {};
+        option.typescript = option.typescript || {};
+        option.typescript.configOverwrite = {
+          ...(option.typescript.configOverwrite || {}),
+          exclude: ['node_modules', 'tests'],
+        };
+        args[0] = option;
+        return args;
+      });
+    }
+  },
   css: {
     extract: false,
   },

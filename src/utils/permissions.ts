@@ -1,7 +1,26 @@
-import type { Permission } from '../types';
+import type { Permission, ServiceType } from '../types';
+
+export const HOSPITAL_SERVICES: ServiceType[] = [
+  'GENERAL',
+  'URGENCE',
+  'ONCOLOGIE',
+  'CARDIOLOGIE',
+];
+
+const SERVICE_PERMISSION: Record<ServiceType, Permission> = {
+  GENERAL: 'service:general',
+  URGENCE: 'service:urgence',
+  ONCOLOGIE: 'service:oncologie',
+  CARDIOLOGIE: 'service:cardiologie',
+};
 
 export function can(permissions: Permission[] | undefined, permission: Permission): boolean {
   return Boolean(permissions?.includes(permission));
+}
+
+/** Services the user may see in the UI. Backend still enforces service:*. */
+export function allowedHospitalServices(permissions: Permission[] | undefined): ServiceType[] {
+  return HOSPITAL_SERVICES.filter((s) => can(permissions, SERVICE_PERMISSION[s]));
 }
 
 export function serviceLabel(service: string): string {

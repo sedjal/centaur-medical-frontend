@@ -10,7 +10,7 @@
     "test:unit": "tsx --tsconfig tests/tsconfig.json tests/unit/run-unit.ts",
     "test:integration": "tsx --tsconfig tests/tsconfig.json tests/integration/run-integration.ts",
     "test:all": "npm run test:unit && npm run test:integration",
-    "test:coverage": "c8 --check-coverage --lines 50 --statements 50 --include \"src/utils/**\" --include \"src/stores/**\" --include \"src/services/**\" --exclude \"tests/**\" tsx --tsconfig tests/tsconfig.json tests/unit/run-unit.ts"
+    "test:coverage": "c8 --check-coverage --lines 70 --statements 70 --functions 70 --branches 70 --include \"src/utils/**\" --include \"src/stores/**\" --include \"src/services/**\" --include \"src/api/**\" --include \"src/composables/**\" --exclude \"tests/**\" tsx --tsconfig tests/tsconfig.json tests/unit/run-unit.ts"
   },
   "main": "dist/CentaurMedical.common.js",
   "dependencies": {
