@@ -44,6 +44,9 @@ import {
   validateNotificationForm,
   notificationApiMessage,
   buildNotificationPayload,
+  staffDirectoryLabel,
+  formatRelativeNotificationTime,
+  formatNotificationBadgeCount,
 } from '../../src/utils/notifications';
 import { ApiError } from '../../src/api/client';
 
@@ -325,6 +328,8 @@ test('medicalHistory: medicalHistoryApiMessage', (t) => {
 test('notifications: labels + unread + validation', (t) => {
   t.equal(notificationStatusLabel('PENDING'), 'Planifiée');
   t.equal(notificationStatusLabel('SENT'), 'Envoyée');
+  t.equal(notificationStatusLabel('PENDING'), 'Planifiée');
+  t.equal(notificationStatusLabel('CANCELLED'), 'Annulée');
   t.equal(notificationTypeLabel('REMINDER'), 'Rappel');
   t.equal(isNotificationUnread('SENT'), true);
   t.equal(isNotificationUnread('READ'), false);
@@ -346,6 +351,32 @@ test('notifications: labels + unread + validation', (t) => {
   });
   t.equal(payload.recipientId, 'u1');
   t.match(payload.scheduledAt, /2026-08-12/);
+  t.match(staffDirectoryLabel({ first_name: 'Lydia', last_name: 'Sedjal', role: 'DIRECTION' }), /SEDJAL Lydia/);
+  t.match(staffDirectoryLabel({ first_name: 'Lydia', last_name: 'Sedjal', role: 'DIRECTION' }), /Direction/);
+  const now = new Date('2026-08-16T12:00:00.000Z');
+  t.equal(formatRelativeNotificationTime('2026-08-16T11:59:30.000Z', now), 'À l’instant');
+  t.match(formatRelativeNotificationTime('2026-08-16T11:50:00.000Z', now), /Il y a/);
+  t.equal(formatNotificationBadgeCount(0), '');
+  t.equal(formatNotificationBadgeCount(1), '1');
+  t.equal(formatNotificationBadgeCount(99), '99');
+  t.equal(formatNotificationBadgeCount(100), '99+');
+  const later = validateNotificationForm({
+    recipientId: 'u1',
+    type: 'GENERAL',
+    title: 'T',
+    message: 'M',
+    immediate: true,
+  });
+  t.equal(later.scheduledAt, undefined);
+  const missingDate = validateNotificationForm({
+    recipientId: 'u1',
+    type: 'GENERAL',
+    title: 'T',
+    message: 'M',
+    immediate: false,
+    scheduledAtLocal: '',
+  });
+  t.ok(missingDate.scheduledAt);
   t.end();
 });
 

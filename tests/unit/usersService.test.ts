@@ -13,6 +13,7 @@ test('users.listUsers / createUser / deleteUser', async (t) => {
   const delStub = sinon.stub(api, 'delete').resolves({ data: {} } as any);
 
   await users.listUsers();
+  await users.listStaffDirectory();
   await users.createUser({
     email: 'a@b.c',
     password: 'x',
@@ -24,6 +25,7 @@ test('users.listUsers / createUser / deleteUser', async (t) => {
   await users.deleteUser('1');
 
   t.ok(getStub.called);
+  t.ok(getStub.calledWith('/users/directory'));
   t.ok(postStub.called);
   t.ok(patchStub.called);
   t.ok(delStub.calledWith('/users/1'));

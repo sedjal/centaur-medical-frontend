@@ -66,6 +66,26 @@ function stubGets(list: unknown) {
     if (path.includes('/patients')) {
       return Promise.resolve({ data: [] } as any);
     }
+    if (path.includes('/users/directory')) {
+      return Promise.resolve({
+        data: [
+          {
+            id: 'u1',
+            email: 'doctor@test.com',
+            first_name: 'Racha',
+            last_name: 'M',
+            role: 'MEDECIN',
+          },
+          {
+            id: 'u2',
+            email: 'sec@test.com',
+            first_name: 'Sam',
+            last_name: 'Sec',
+            role: 'SECRETAIRE',
+          },
+        ],
+      } as any);
+    }
     if (path.includes('/users')) {
       return Promise.resolve({ data: [] } as any);
     }
@@ -87,7 +107,9 @@ test('intégration NotificationsView: liste (notifications:read)', async (t) => 
     });
     await flushPromises();
     t.ok(stub.calledWith('/notifications'));
-    t.match(wrapper.text(), /Réunion staff|Envoyée|Salle A/);
+    t.match(wrapper.text(), /Réunion staff|Salle A/);
+    t.match(wrapper.text(), /Toutes/);
+    t.match(wrapper.text(), /Non lues/);
     t.equal(wrapper.text().includes('Nouvelle notification'), false);
     wrapper.unmount();
   } finally {
@@ -174,6 +196,96 @@ test('intégration NotificationsView: PENDING affiche Planifiée + Annuler', asy
   }
 });
 
+test('intégration NotificationsView: clic ouvre détail destinataire + auteur', async (t) => {
+  const stub = stubGets({ items: [sample], total: 1 });
+  try {
+    const { wrapper } = await mountView(NotificationsView, {
+      path: '/notifications',
+      authenticated: true,
+      user: sessionUser({
+        id: 'u1',
+        permissions: ['notifications:read', 'notifications:create', 'service:urgence'] as never,
+      }),
+      routes: notifRoutes(),
+    });
+    await flushPromises();
+    await wrapper.find('.notif-item').trigger('click');
+    await flushPromises();
+    t.match(wrapper.text(), /Détail de la notification/);
+    t.match(wrapper.text(), /Destinataire/);
+    t.match(wrapper.text(), /Vous/);
+    t.match(wrapper.text(), /Créée par/);
+    t.match(wrapper.text(), /SEC Sam/);
+    wrapper.unmount();
+  } finally {
+    stub.restore();
+    t.end();
+  }
+});
+
+test('intégration NotificationsView: filtres Toutes / Non lues / Lues', async (t) => {
+  const stub = stubGets({ items: [sample], total: 1 });
+  try {
+    const { wrapper } = await mountView(NotificationsView, {
+      path: '/notifications',
+      authenticated: true,
+      user: sessionUser({
+        id: 'u1',
+        permissions: ['notifications:read', 'service:urgence'] as never,
+      }),
+      routes: notifRoutes(),
+    });
+    await flushPromises();
+    const unread = wrapper.findAll('button').find((b) => /Non lues/.test(b.text()));
+    const read = wrapper.findAll('button').find((b) => b.text() === 'Lues');
+    t.ok(unread);
+    t.ok(read);
+    await unread!.trigger('click');
+    await flushPromises();
+    t.ok(
+      stub.getCalls().some((c) => c.args[1]?.params?.read === 'false'),
+      'filtre non lues'
+    );
+    await read!.trigger('click');
+    await flushPromises();
+    t.ok(
+      stub.getCalls().some((c) => c.args[1]?.params?.read === 'true'),
+      'filtre lues'
+    );
+    wrapper.unmount();
+  } finally {
+    stub.restore();
+    t.end();
+  }
+});
+
+test('intégration NotificationsView: CANCELLED discrète', async (t) => {
+  const stub = stubGets({
+    items: [{ ...sample, id: 'n3', status: 'CANCELLED', title: 'Rappel annulé' }],
+    total: 1,
+  });
+  try {
+    const { wrapper } = await mountView(NotificationsView, {
+      path: '/notifications',
+      authenticated: true,
+      user: sessionUser({
+        id: 'u1',
+        permissions: ['notifications:read', 'service:urgence'] as never,
+      }),
+      routes: notifRoutes(),
+    });
+    await flushPromises();
+    t.match(wrapper.text(), /Rappel annulé/);
+    t.match(wrapper.text(), /Annulée/);
+    t.ok(wrapper.find('.notif-item--cancelled').exists());
+    t.equal(wrapper.text().includes('Marquer comme lue'), false);
+    wrapper.unmount();
+  } finally {
+    stub.restore();
+    t.end();
+  }
+});
+
 test('intégration NotificationsView: mark as read', async (t) => {
   const getStub = stubGets({ items: [sample], total: 1 });
   const patchStub = sinon
@@ -248,6 +360,115 @@ test('intégration Topbar: badge absent si 0, présent si unread > 0', async (t)
     await flushPromises();
     t.equal(w2.find('.notif-badge').exists(), false);
     w2.unmount();
+  } finally {
+    stub.restore();
+    t.end();
+  }
+});
+
+test('intégration Topbar: dropdown notifications', async (t) => {
+  const stub = sinon.stub(api, 'get').resolves({ data: { items: [sample], total: 1 } } as any);
+  try {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        {
+          path: '/',
+          name: 'dashboard',
+          component: { setup: () => () => h('div', 'dash') },
+          meta: { title: 'Dashboard' },
+        },
+        ...notifRoutes(),
+      ],
+    });
+    const auth = useAuthStore();
+    auth.setSession(
+      'access-jwt',
+      sessionUser({
+        id: 'u1',
+        permissions: ['notifications:read', 'service:urgence'] as never,
+      })
+    );
+    await router.push('/');
+    await router.isReady();
+    const w = mount(Topbar, {
+      props: { onMenuToggle: () => undefined },
+      global: { plugins: [pinia, router] },
+    });
+    await flushPromises();
+    t.equal(w.find('.notif-dropdown').exists(), false);
+    await w.find('.notif-badge-btn').trigger('click');
+    await flushPromises();
+    t.ok(w.find('.notif-dropdown').exists());
+    t.match(w.text(), /Réunion staff/);
+    t.match(w.text(), /Voir toutes/);
+    w.unmount();
+  } finally {
+    stub.restore();
+    t.end();
+  }
+});
+
+test('intégration NotificationsView: formulaire destinataire (sans users:read)', async (t) => {
+  const stub = stubGets({ items: [], total: 0 });
+  try {
+    const { wrapper } = await mountView(NotificationsView, {
+      path: '/notifications',
+      authenticated: true,
+      user: sessionUser({
+        id: 'u-dir',
+        firstName: 'Lydia',
+        lastName: 'Sedjal',
+        role: 'DIRECTION',
+        permissions: [
+          'notifications:read',
+          'notifications:create',
+          'notifications:read_all',
+          'patients:read',
+          'service:general',
+        ] as never,
+      }),
+      routes: notifRoutes(),
+    });
+    await flushPromises();
+    t.ok(
+      stub.getCalls().some((c) => String(c.args[0]).includes('/users/directory')),
+      'charge l’annuaire via notifications:create'
+    );
+    t.equal(
+      stub.getCalls().some((c) => String(c.args[0]) === '/users'),
+      false
+    );
+    const createBtn = wrapper.findAll('button').find((b) => /Nouvelle notification/.test(b.text()));
+    t.ok(createBtn);
+    await createBtn!.trigger('click');
+    await flushPromises();
+    t.match(wrapper.text(), /Destinataire/);
+    const recipientInput = wrapper.find('.cm-combobox__input');
+    t.ok(recipientInput.exists());
+    await recipientInput.trigger('focus');
+    await flushPromises();
+    t.match(wrapper.text(), /SEC Sam|Rechercher par nom/);
+    await recipientInput.setValue('sam');
+    await flushPromises();
+    t.match(wrapper.text(), /SEC Sam/);
+    t.equal(wrapper.text().includes('Identifiant utilisateur destinataire'), false);
+    t.equal(wrapper.html().includes('b0000001'), false);
+    t.match(wrapper.text(), /Maintenant/);
+    t.match(wrapper.text(), /Programmer/);
+    t.equal(wrapper.find('input[type="datetime-local"]').exists(), false);
+    const later = wrapper.findAll('input[type="radio"]').find((r) => {
+      const el = r.element as HTMLInputElement;
+      return el.nextSibling && String(el.parentElement?.textContent || '').includes('Programmer');
+    });
+    t.ok(later);
+    await later!.setValue(true);
+    await later!.trigger('change');
+    await flushPromises();
+    t.ok(wrapper.find('input[type="datetime-local"]').exists());
+    wrapper.unmount();
   } finally {
     stub.restore();
     t.end();

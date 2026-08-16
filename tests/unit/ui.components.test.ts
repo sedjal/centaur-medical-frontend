@@ -11,6 +11,10 @@ import Badge from '../../src/components/ui/Badge';
 import EmptyState from '../../src/components/ui/EmptyState';
 import Modal from '../../src/components/ui/Modal';
 import ConfirmDialog from '../../src/components/ui/ConfirmDialog';
+import SearchableSelect, {
+  filterSearchableOptions,
+} from '../../src/components/ui/SearchableSelect';
+import NotificationBadge from '../../src/components/notification/NotificationBadge';
 
 test('Button: render children', (t) => {
   const wrapper = mount(Button, {
@@ -230,5 +234,81 @@ test('ConfirmDialog: confirm + cancel', async (t) => {
   t.ok(confirmed);
 
   wrapper.unmount();
+  t.end();
+});
+
+test('filterSearchableOptions: filtre nom / e-mail / accents', (t) => {
+  const options = [
+    {
+      value: 'u1',
+      label: 'SEDJAL Lydia — Direction',
+      searchText: 'Lydia Sedjal direction@test.com DIRECTION',
+    },
+    {
+      value: 'u2',
+      label: 'SEC Sam — Secrétaire',
+      searchText: 'Sam Sec sec@test.com SECRETAIRE',
+    },
+  ];
+  t.equal(filterSearchableOptions(options, '').length, 2);
+  t.equal(filterSearchableOptions(options, 'sedjal')[0].value, 'u1');
+  t.equal(filterSearchableOptions(options, 'sec@test')[0].value, 'u2');
+  t.equal(filterSearchableOptions(options, 'secretaire')[0].value, 'u2');
+  t.equal(filterSearchableOptions(options, 'zzzz').length, 0);
+  t.end();
+});
+
+test('SearchableSelect: recherche et sélection', async (t) => {
+  let chosen = '';
+  const wrapper = mount(SearchableSelect, {
+    props: {
+      label: 'Destinataire',
+      value: '',
+      placeholder: 'Choisir un destinataire',
+      searchPlaceholder: 'Rechercher par nom, e-mail ou rôle…',
+      options: [
+        { value: 'u1', label: 'SEDJAL Lydia — Direction', searchText: 'Lydia' },
+        { value: 'u2', label: 'SEC Sam — Secrétaire', searchText: 'Sam Sec' },
+      ],
+      onChange: (v: string) => {
+        chosen = v;
+      },
+    },
+    attachTo: document.body,
+  });
+  await flushPromises();
+  const input = wrapper.find('.cm-combobox__input');
+  t.ok(input.exists());
+  await input.trigger('focus');
+  await flushPromises();
+  t.ok(wrapper.find('.cm-combobox__menu').exists());
+  t.match(wrapper.text(), /SEC Sam/);
+
+  await input.setValue('sam');
+  await flushPromises();
+  t.match(wrapper.text(), /SEC Sam/);
+  t.equal(wrapper.text().includes('SEDJAL Lydia'), false);
+
+  const option = wrapper.findAll('.cm-combobox__option').find((li) => /SEC Sam/.test(li.text()));
+  t.ok(option);
+  await option!.trigger('mousedown');
+  await flushPromises();
+  t.equal(chosen, 'u2');
+  wrapper.unmount();
+  t.end();
+});
+
+test('NotificationBadge: 0 / 1 / 99+', (t) => {
+  const none = mount(NotificationBadge, { props: { count: 0 } });
+  t.equal(none.find('.notif-badge').exists(), false);
+  none.unmount();
+
+  const one = mount(NotificationBadge, { props: { count: 1 } });
+  t.equal(one.find('.notif-badge').text(), '1');
+  one.unmount();
+
+  const many = mount(NotificationBadge, { props: { count: 120 } });
+  t.equal(many.find('.notif-badge').text(), '99+');
+  many.unmount();
   t.end();
 });

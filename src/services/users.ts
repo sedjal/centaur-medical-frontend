@@ -3,6 +3,7 @@
  */
 export {
   listUsers,
+  listStaffDirectory,
   createUser,
   updateUser,
   deleteUser,

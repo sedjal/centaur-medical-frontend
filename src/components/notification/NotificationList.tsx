@@ -12,6 +12,10 @@ export default defineComponent({
       type: Function as PropType<(patientId: string) => string>,
       default: undefined,
     },
+    recipientLabel: {
+      type: Function as PropType<(recipientId: string) => string>,
+      default: undefined,
+    },
     canMarkRead: { type: Boolean, default: false },
     canCancel: { type: Boolean, default: false },
     actingId: { type: String as PropType<string | null>, default: null },
@@ -35,13 +39,16 @@ export default defineComponent({
       }
 
       return (
-        <div class="notif-list">
+        <div class="notif-inbox">
           {props.items.map((n) => (
             <NotificationCard
               key={n.id}
               notification={n}
               patientLabel={
                 n.patientId && props.patientLabel ? props.patientLabel(n.patientId) : undefined
+              }
+              recipientLabel={
+                props.recipientLabel ? props.recipientLabel(n.recipientId) : undefined
               }
               canMarkRead={props.canMarkRead}
               canCancel={props.canCancel}

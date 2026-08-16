@@ -4,19 +4,20 @@ import {
   NOTIFICATION_TYPES,
   buildNotificationPayload,
   notificationTypeLabel,
+  staffDirectoryLabel,
   validateNotificationForm,
 } from '../../utils/notifications';
 import { toDatetimeLocalValue } from '../../utils/prescriptions';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, Select, SearchableSelect } from '../ui';
 
 export default defineComponent({
   name: 'NotificationForm',
   props: {
-    defaultRecipientId: { type: String, required: true },
     users: { type: Array as PropType<AppUser[]>, default: () => [] },
     patients: { type: Array as PropType<Patient[]>, default: () => [] },
-    canPickRecipient: { type: Boolean, default: false },
+    currentUserId: { type: String, default: '' },
     canPickPatient: { type: Boolean, default: false },
+    loadingRecipients: { type: Boolean, default: false },
     saving: { type: Boolean, default: false },
     error: { type: String, default: undefined },
     onSubmit: {
@@ -26,19 +27,25 @@ export default defineComponent({
     onCancel: { type: Function as PropType<() => void>, default: undefined },
   },
   setup(props) {
-    const recipientId = ref(props.defaultRecipientId);
+    const recipientId = ref('');
     const patientId = ref('');
     const type = ref<NotificationType | ''>('GENERAL');
     const title = ref('');
     const message = ref('');
+    const scheduleMode = ref<'now' | 'later'>('now');
     const scheduledAtLocal = ref(toDatetimeLocalValue());
     const fieldErrors = ref<Record<string, string>>({});
 
     const userOptions = computed(() =>
-      props.users.map((u) => ({
-        value: u.id,
-        label: `${u.last_name?.toUpperCase() || ''} ${u.first_name || ''} — ${u.email}`.trim(),
-      }))
+      props.users.map((u) => {
+        const label = staffDirectoryLabel(u);
+        const self = props.currentUserId && u.id === props.currentUserId ? ' (vous)' : '';
+        return {
+          value: u.id,
+          label: `${label}${self}`,
+          searchText: [u.first_name, u.last_name, u.email, u.role].filter(Boolean).join(' '),
+        };
+      })
     );
 
     const patientOptions = computed(() =>
@@ -48,13 +55,24 @@ export default defineComponent({
       }))
     );
 
+    const showPatient = computed(
+      () =>
+        props.canPickPatient &&
+        (type.value === 'PATIENT' ||
+          type.value === 'PRESCRIPTION' ||
+          type.value === 'MEDICAL_HISTORY' ||
+          Boolean(patientId.value))
+    );
+
     function submit() {
+      const immediate = scheduleMode.value === 'now';
       const errors = validateNotificationForm({
         recipientId: recipientId.value,
         type: type.value,
         title: title.value,
         message: message.value,
         scheduledAtLocal: scheduledAtLocal.value,
+        immediate,
         patientId: patientId.value,
       });
       fieldErrors.value = errors;
@@ -68,6 +86,7 @@ export default defineComponent({
           title: title.value,
           message: message.value,
           scheduledAtLocal: scheduledAtLocal.value,
+          immediate,
         })
       );
     }
@@ -80,29 +99,23 @@ export default defineComponent({
           if (!props.saving) submit();
         }}
       >
-        {props.canPickRecipient && userOptions.value.length > 0 ? (
-          <Select
-            label="Destinataire"
-            required
-            value={recipientId.value}
-            options={userOptions.value}
-            error={fieldErrors.value.recipientId}
-            onChange={(v: string) => {
-              recipientId.value = v;
-            }}
-          />
-        ) : (
-          <Input
-            label="Destinataire"
-            required
-            value={recipientId.value}
-            hint="Identifiant utilisateur destinataire"
-            error={fieldErrors.value.recipientId}
-            disabled={!props.canPickRecipient}
-            onInput={(v: string) => {
-              recipientId.value = v;
-            }}
-          />
+        <SearchableSelect
+          label="Destinataire"
+          required
+          value={recipientId.value}
+          options={userOptions.value}
+          placeholder={
+            props.loadingRecipients ? 'Chargement des destinataires…' : 'Choisir un destinataire'
+          }
+          searchPlaceholder="Rechercher par nom, e-mail ou rôle…"
+          disabled={props.loadingRecipients || userOptions.value.length === 0}
+          error={fieldErrors.value.recipientId}
+          onChange={(v: string) => {
+            recipientId.value = v;
+          }}
+        />
+        {!props.loadingRecipients && userOptions.value.length === 0 && (
+          <p class="notif-form__hint">Aucun membre du personnel actif n’est disponible.</p>
         )}
 
         <Select
@@ -118,6 +131,18 @@ export default defineComponent({
             type.value = (v as NotificationType) || '';
           }}
         />
+
+        {showPatient.value && (
+          <Select
+            label="Patient lié (optionnel)"
+            value={patientId.value}
+            options={patientOptions.value}
+            placeholder="Aucun patient"
+            onChange={(v: string) => {
+              patientId.value = v;
+            }}
+          />
+        )}
 
         <Input
           label="Titre"
@@ -150,26 +175,41 @@ export default defineComponent({
           )}
         </div>
 
-        <Input
-          label="Planifier le"
-          type="datetime-local"
-          required
-          value={scheduledAtLocal.value}
-          hint="Si la date est passée ou actuelle, la notification sera marquée envoyée immédiatement."
-          error={fieldErrors.value.scheduledAt}
-          onInput={(v: string) => {
-            scheduledAtLocal.value = v;
-          }}
-        />
+        <fieldset class="notif-form__schedule">
+          <legend class="cm-field__label">Planification</legend>
+          <label class="notif-form__radio">
+            <input
+              type="radio"
+              name="notif-schedule"
+              checked={scheduleMode.value === 'now'}
+              onChange={() => {
+                scheduleMode.value = 'now';
+              }}
+            />
+            Maintenant
+          </label>
+          <label class="notif-form__radio">
+            <input
+              type="radio"
+              name="notif-schedule"
+              checked={scheduleMode.value === 'later'}
+              onChange={() => {
+                scheduleMode.value = 'later';
+              }}
+            />
+            Programmer
+          </label>
+        </fieldset>
 
-        {props.canPickPatient && (
-          <Select
-            label="Patient (optionnel)"
-            value={patientId.value}
-            options={patientOptions.value}
-            placeholder="Aucun patient"
-            onChange={(v: string) => {
-              patientId.value = v;
+        {scheduleMode.value === 'later' && (
+          <Input
+            label="Date et heure"
+            type="datetime-local"
+            required
+            value={scheduledAtLocal.value}
+            error={fieldErrors.value.scheduledAt}
+            onInput={(v: string) => {
+              scheduledAtLocal.value = v;
             }}
           />
         )}
@@ -187,10 +227,10 @@ export default defineComponent({
             disabled={props.saving}
             onClick={() => props.onCancel?.()}
           >
-            Fermer
+            Annuler
           </Button>
           <Button type="submit" loading={props.saving} disabled={props.saving}>
-            Créer la notification
+            Créer
           </Button>
         </div>
       </form>

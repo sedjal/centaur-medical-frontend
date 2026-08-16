@@ -11,3 +11,4 @@ import './api.composables.test';
 import './prescriptions.api.test';
 import './medical-history.api.test';
 import './notifications.api.test';
+import './notifications.sse.test';

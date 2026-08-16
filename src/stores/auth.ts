@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import * as authApi from '../services/auth';
 import type { AuthUser, Permission } from '../types';
+import { teardownNotificationStream } from '../composables/useNotifications';
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('centaur_token'));
@@ -177,6 +178,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    teardownNotificationStream();
     token.value = null;
     mfaToken.value = null;
     tempToken.value = null;

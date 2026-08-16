@@ -1,9 +1,11 @@
-import { defineComponent, onMounted, type PropType } from 'vue';
+import { defineComponent, onMounted, onUnmounted, ref, watch, type PropType } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { useNotifications } from '../../composables/useNotifications';
 import { roleDisplayLabel } from '../../utils/labels';
+import type { AppNotification } from '../../types';
 import NotificationBadge from '../notification/NotificationBadge';
+import NotificationDropdown from '../notification/NotificationDropdown';
 
 export default defineComponent({
   name: 'Topbar',
@@ -14,21 +16,86 @@ export default defineComponent({
     const route = useRoute();
     const router = useRouter();
     const auth = useAuthStore();
-    const { unreadCount, fetchUnreadCount } = useNotifications();
+    const { unreadCount, streamRevision, fetchUnreadCount, fetchNotifications, markAsRead, connect, disconnect } =
+      useNotifications();
+    const open = ref(false);
+    const preview = ref<AppNotification[]>([]);
+    const loadingPreview = ref(false);
+    const wrapEl = ref<HTMLElement | null>(null);
 
     onMounted(() => {
       if (auth.isAuthenticated && auth.hasPermission('notifications:read')) {
         void fetchUnreadCount();
+        connect();
       }
+      document.addEventListener('mousedown', onDocDown);
+      document.addEventListener('keydown', onDocKey);
     });
+
+    onUnmounted(() => {
+      disconnect();
+      document.removeEventListener('mousedown', onDocDown);
+      document.removeEventListener('keydown', onDocKey);
+    });
+
+    async function refreshPreview(clearOnError = false) {
+      try {
+        const data = await fetchNotifications();
+        preview.value = (data.items || []).slice(0, 8);
+      } catch {
+        if (clearOnError) preview.value = [];
+      }
+    }
+
+    watch(streamRevision, () => {
+      if (!open.value) return;
+      void refreshPreview();
+    });
+
+    function onDocDown(ev: MouseEvent) {
+      if (!open.value) return;
+      const el = wrapEl.value;
+      if (el && ev.target instanceof Node && !el.contains(ev.target)) {
+        open.value = false;
+      }
+    }
+
+    function onDocKey(ev: KeyboardEvent) {
+      if (ev.key === 'Escape') open.value = false;
+    }
 
     function logout() {
       auth.logout();
       void router.push({ name: 'login' });
     }
 
-    function goNotifications() {
+    async function toggleDropdown() {
+      if (!auth.hasPermission('notifications:read')) return;
+      open.value = !open.value;
+      if (!open.value) return;
+      loadingPreview.value = true;
+      try {
+        await refreshPreview(true);
+      } finally {
+        loadingPreview.value = false;
+      }
+    }
+
+    function goAll() {
+      open.value = false;
       void router.push({ name: 'notifications' });
+    }
+
+    async function openItem(n: AppNotification) {
+      open.value = false;
+      if (n.status === 'SENT') {
+        try {
+          await markAsRead(n.id);
+        } catch {
+          /* ignore */
+        }
+      }
+      void router.push({ name: 'notifications', query: { open: n.id } });
     }
 
     return () => (
@@ -67,7 +134,28 @@ export default defineComponent({
 
         <div class="topbar-right">
           {auth.hasPermission('notifications:read') ? (
-            <NotificationBadge count={unreadCount.value} onClick={goNotifications} />
+            <div
+              class="notif-bell"
+              ref={(el: unknown) => {
+                wrapEl.value = (el as HTMLElement) || null;
+              }}
+            >
+              <NotificationBadge
+                count={unreadCount.value}
+                expanded={open.value}
+                onClick={() => void toggleDropdown()}
+              />
+              <NotificationDropdown
+                open={open.value}
+                items={preview.value}
+                loading={loadingPreview.value}
+                onClose={() => {
+                  open.value = false;
+                }}
+                onOpenAll={goAll}
+                onOpenItem={(n: AppNotification) => void openItem(n)}
+              />
+            </div>
           ) : (
             <button
               type="button"

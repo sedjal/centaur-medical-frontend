@@ -2,6 +2,9 @@
  * jsdom partagé — unit + intégration (localStorage, hash router, Vue).
  */
 import { JSDOM } from 'jsdom';
+import { __disableNativeNotificationStream } from '../src/api/notifications.stream';
+
+__disableNativeNotificationStream();
 
 const g = globalThis as Record<string, unknown>;
 

@@ -6,6 +6,11 @@ export async function listUsers() {
   return data;
 }
 
+export async function listStaffDirectory() {
+  const { data } = await api.get<AppUser[]>('/users/directory');
+  return data;
+}
+
 export async function createUser(payload: {
   email: string;
   password: string;

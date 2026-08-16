@@ -9,4 +9,5 @@ import './dashboard.view.test';
 import './prescriptions.view.test';
 import './history.view.test';
 import './notifications.view.test';
+import '../e2e/notification-sse.e2e.test';
 
