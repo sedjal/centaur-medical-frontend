@@ -7,6 +7,7 @@ import test from 'tape';
 import { AxiosError } from 'axios';
 import type { AxiosAdapter, InternalAxiosRequestConfig } from 'axios';
 import api from '../../src/services/api';
+import { setUnauthorizedHandler } from '../../src/api/client';
 
 const originalAdapter = api.defaults.adapter;
 
@@ -123,6 +124,49 @@ test('interceptor: 403 ne purge pas le token', async (t) => {
   } catch {
     t.equal(localStorage.getItem('centaur_token'), 'access-jwt');
   }
+  api.defaults.adapter = originalAdapter;
+  t.end();
+});
+
+test('interceptor: 401 appelle unauthorizedHandler (logout)', async (t) => {
+  localStorage.clear();
+  localStorage.setItem('centaur_token', 'access-jwt');
+  setHash('/dashboard');
+  let called = 0;
+  setUnauthorizedHandler(() => {
+    called += 1;
+    localStorage.removeItem('centaur_token');
+  });
+  api.defaults.adapter = failAdapter(401);
+  try {
+    await api.get('/patients');
+    t.fail('aurait dû throw');
+  } catch {
+    t.equal(called, 1);
+    t.equal(localStorage.getItem('centaur_token'), null);
+  }
+  setUnauthorizedHandler(null);
+  api.defaults.adapter = originalAdapter;
+  t.end();
+});
+
+test('interceptor: 401 sur /auth/logout ne relance pas le handler', async (t) => {
+  localStorage.clear();
+  localStorage.setItem('centaur_token', 'access-jwt');
+  setHash('/dashboard');
+  let called = 0;
+  setUnauthorizedHandler(() => {
+    called += 1;
+  });
+  api.defaults.adapter = failAdapter(401);
+  try {
+    await api.post('/auth/logout');
+    t.fail('aurait dû throw');
+  } catch {
+    t.equal(called, 0);
+    t.equal(localStorage.getItem('centaur_token'), 'access-jwt');
+  }
+  setUnauthorizedHandler(null);
   api.defaults.adapter = originalAdapter;
   t.end();
 });

@@ -66,3 +66,16 @@ export async function resetPassword(resetToken: string, newPassword: string) {
   });
   return data;
 }
+
+export async function refreshSession() {
+  const { data } = await api.post<{ status: 'OK'; token: string; user: AuthUser }>('/auth/refresh');
+  return data;
+}
+
+export async function logout(accessToken: string) {
+  await api.post(
+    '/auth/logout',
+    {},
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+}

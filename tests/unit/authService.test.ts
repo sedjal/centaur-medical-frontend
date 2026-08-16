@@ -61,3 +61,24 @@ test('auth.changePassword / changePasswordRequired / verifyResetCode / resetPass
   stub.restore();
   t.end();
 });
+
+test('auth.refreshSession POST /auth/refresh', async (t) => {
+  const stub = sinon.stub(api, 'post').resolves({
+    data: { status: 'OK', token: 'next', user: { email: 'a@b.c' } },
+  } as any);
+  const data = await auth.refreshSession();
+  t.equal(data.token, 'next');
+  t.ok(stub.calledWith('/auth/refresh'));
+  stub.restore();
+  t.end();
+});
+
+test('auth.logout POST /auth/logout with Bearer explicite', async (t) => {
+  const stub = sinon.stub(api, 'post').resolves({ data: { ok: true } } as any);
+  await auth.logout('access-jwt');
+  t.ok(stub.calledOnce);
+  t.equal(stub.firstCall.args[0], '/auth/logout');
+  t.equal((stub.firstCall.args[2] as { headers: { Authorization: string } }).headers.Authorization, 'Bearer access-jwt');
+  stub.restore();
+  t.end();
+});

@@ -20,6 +20,22 @@ export const useAuthStore = defineStore('auth', () => {
     return `${fn} ${ln}`.trim();
   });
 
+  let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+  function stopRefreshTimer() {
+    if (!refreshTimer) return;
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+
+  function startRefreshTimer() {
+    stopRefreshTimer();
+    if (process.env.NODE_ENV === 'test') return;
+    refreshTimer = setInterval(() => {
+      void refreshSession();
+    }, 10 * 60 * 1000);
+  }
+
   function hasPermission(perm: Permission): boolean {
     return Boolean(user.value?.permissions?.includes(perm));
   }
@@ -37,6 +53,14 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('centaur_temp_token');
     mfaToken.value = null;
     tempToken.value = null;
+    startRefreshTimer();
+  }
+
+  async function refreshSession() {
+    if (!token.value) return null;
+    const result = await authApi.refreshSession();
+    setSession(result.token, result.user);
+    return result;
   }
 
   async function login(email: string, password: string) {
@@ -179,6 +203,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     teardownNotificationStream();
+    stopRefreshTimer();
+    const existing = token.value || (typeof localStorage !== 'undefined' ? localStorage.getItem('centaur_token') : null);
     token.value = null;
     mfaToken.value = null;
     tempToken.value = null;
@@ -186,6 +212,11 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('centaur_token');
     localStorage.removeItem('centaur_mfa_token');
     localStorage.removeItem('centaur_temp_token');
+    if (existing) {
+      void authApi.logout(existing).catch(() => {
+        /* already cleared locally */
+      });
+    }
   }
 
   return {
@@ -207,5 +238,6 @@ export const useAuthStore = defineStore('auth', () => {
     loadMe,
     logout,
     setSession,
+    refreshSession,
   };
 });

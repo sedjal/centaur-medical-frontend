@@ -70,6 +70,7 @@ test('auth store: CHANGE_PASSWORD', async (t) => {
 
 test('auth store: logout nettoie le storage', (t) => {
   setActivePinia(createPinia());
+  const stub = sinon.stub(api, 'post').resolves({ data: { ok: true } } as any);
   const store = useAuthStore();
   store.setSession('t', {
     email: 'a@b.c',
@@ -81,6 +82,7 @@ test('auth store: logout nettoie le storage', (t) => {
   store.logout();
   t.equal(store.token, null);
   t.equal(localStorage.getItem('centaur_token'), null);
+  stub.restore();
   t.end();
 });
 

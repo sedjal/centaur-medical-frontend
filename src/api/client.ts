@@ -45,6 +45,13 @@ function clearSessionTokens(): void {
   localStorage.removeItem('centaur_temp_token');
 }
 
+let unauthorizedHandler: (() => void) | null = null;
+
+/** Pinia registers this so a 401 also tears down SSE and clears the auth store. */
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  unauthorizedHandler = fn;
+}
+
 /** Transforme une erreur Axios (ou autre) en ApiError exploitable par l’UI. */
 export function parseApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
@@ -112,10 +119,15 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     const status = error.response?.status;
+    const reqUrl = String(error.config?.url || '');
+    if (status === 401 && reqUrl.includes('/auth/logout')) {
+      return Promise.reject(error);
+    }
     if (status === 401) {
       const hash = window.location.hash || '';
       if (!isPublicAuthRoute(hash)) {
-        clearSessionTokens();
+        if (unauthorizedHandler) unauthorizedHandler();
+        else clearSessionTokens();
         if (!hash.includes('/login')) {
           window.location.hash = '#/login';
         }

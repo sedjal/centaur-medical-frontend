@@ -10,5 +10,7 @@ export {
   forgotPassword,
   verifyResetCode,
   resetPassword,
+  refreshSession,
+  logout,
 } from '../api/auth.api';
 export type { LoginResponse, SessionResponse } from '../api/auth.api';

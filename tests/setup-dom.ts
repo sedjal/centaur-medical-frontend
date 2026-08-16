@@ -1,6 +1,8 @@
 /**
  * jsdom partagé — unit + intégration (localStorage, hash router, Vue).
  */
+process.env.NODE_ENV = 'test';
+
 import { JSDOM } from 'jsdom';
 import { __disableNativeNotificationStream } from '../src/api/notifications.stream';
 
