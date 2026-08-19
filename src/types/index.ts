@@ -10,6 +10,9 @@ export type Permission =
   | 'prescriptions:create'
   | 'prescriptions:cancel'
   | 'medical_history:read'
+  | 'documents:read'
+  | 'documents:create'
+  | 'documents:delete'
   | 'notifications:read'
   | 'notifications:create'
   | 'notifications:read_all'
@@ -24,7 +27,8 @@ export type Permission =
   | 'users:delete'
   | 'roles:manage'
   | 'audit:read'
-  | 'reports:read';
+  | 'reports:read'
+  | 'reports:create';
 
 export interface AuthUser {
   sub?: string;
@@ -186,7 +190,9 @@ export type MedicalHistoryEventType =
   | 'CONSULTATION'
   | 'DIAGNOSIS'
   | 'PRESCRIPTION'
-  | 'RECORD_UPDATE';
+  | 'RECORD_UPDATE'
+  | 'DOCUMENT_ADDED'
+  | 'CLINICAL_NOTE';
 
 export interface MedicalHistoryItem {
   id: string;
@@ -242,4 +248,33 @@ export interface NotificationCreatePayload {
   title: string;
   message: string;
   scheduledAt: string;
+}
+
+export type DocumentType = 'ECG' | 'CARTE_GROUPE' | 'ORDONNANCE' | 'AUTRE';
+
+export interface PatientDocument {
+  id: string;
+  patientId: string;
+  docType: DocumentType;
+  filename: string;
+  mimeType: string;
+  byteSize: number;
+  uploadedBy: string | null;
+  uploadedByName: string | null;
+  createdAt: string;
+}
+
+export interface ClinicalNote {
+  id: string;
+  patientId: string;
+  title: string;
+  body: string;
+  authorId: string | null;
+  authorName: string | null;
+  createdAt: string;
+}
+
+export interface ClinicalNoteCreatePayload {
+  title: string;
+  body: string;
 }

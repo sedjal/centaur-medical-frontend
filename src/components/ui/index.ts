@@ -17,3 +17,5 @@ export { default as LoadingState } from './LoadingState';
 export { default as ErrorState } from './ErrorState';
 export { default as Modal } from './Modal';
 export { default as ConfirmDialog } from './ConfirmDialog';
+export { default as CmIcon } from './icons';
+export type { IconName } from './icons';

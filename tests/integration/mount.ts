@@ -34,6 +34,7 @@ export async function mountView(
     routes?: RouteRecordRaw[];
     authenticated?: boolean;
     user?: AuthUser;
+    props?: Record<string, unknown>;
   } = {}
 ): Promise<{ wrapper: VueWrapper; router: ReturnType<typeof createRouter>; auth: ReturnType<typeof useAuthStore> }> {
   const pinia = createPinia();
@@ -96,6 +97,7 @@ export async function mountView(
   const wrapper = mount(component, {
     global: { plugins: [pinia, router] },
     attachTo: document.body,
+    props: options.props,
   });
   await flushPromises();
 

@@ -20,6 +20,7 @@ import {
   type DataTableColumn,
   type BadgeVariant,
 } from '../components/ui';
+import { CmIcon } from '../components/ui/icons';
 import PrescriptionCard from '../components/prescription/PrescriptionCard';
 import PrescriptionForm from '../components/prescription/PrescriptionForm';
 
@@ -148,7 +149,12 @@ export default defineComponent({
       {
         key: 'status',
         label: 'Statut',
-        render: (row) => <Badge variant={statusVariant(row.status)}>{statusLabel(row.status)}</Badge>,
+        render: (row) => (
+          <Badge variant={statusVariant(row.status)}>
+            {row.status === 'ACTIVE' ? <span class="cm-badge__dot" /> : null}
+            {statusLabel(row.status)}
+          </Badge>
+        ),
       },
       {
         key: 'medications',
@@ -161,8 +167,10 @@ export default defineComponent({
         className: 'col-actions',
         render: (row) => (
           <div class="row-actions">
-            <Button variant="ghost" size="sm" onClick={() => (detail.value = row)}>
-              Voir
+            <Button variant="outline" size="sm" onClick={() => (detail.value = row)}>
+              <span class="btn-with-icon">
+                <CmIcon name="eye" size={14} /> Voir
+              </span>
             </Button>
             {canCancel.value && row.status === 'ACTIVE' && (
               <Button
@@ -174,7 +182,9 @@ export default defineComponent({
                   cancelTarget.value = row;
                 }}
               >
-                Annuler
+                <span class="btn-with-icon">
+                  <CmIcon name="trash" size={14} /> Annuler
+                </span>
               </Button>
             )}
           </div>
@@ -196,7 +206,7 @@ export default defineComponent({
                   formOpen.value = true;
                 }}
               >
-                Nouvelle ordonnance
+                + Nouvelle ordonnance
               </Button>
             ) : undefined
           }

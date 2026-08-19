@@ -28,11 +28,16 @@ import {
   toDatetimeLocalValue,
   fromDatetimeLocalValue,
   formatPrescriptionDate,
+  prescriptionTitle,
 } from '../../src/utils/prescriptions';
 import {
   medicalHistoryEventLabel,
   medicalHistoryEventVariant,
   formatMedicalHistoryDate,
+  formatMedicalHistoryDay,
+  timelineTone,
+  timelineKindBadge,
+  timelineMetaId,
   dateInputToIso,
   medicalHistoryMetadataLabel,
   medicalHistoryApiMessage,
@@ -285,6 +290,8 @@ test('prescriptions: helpers date + emptyMedication', (t) => {
   t.equal(formatPrescriptionDate(null), '—');
   t.equal(formatPrescriptionDate('not-a-date').slice(0, 10), 'not-a-date');
   t.match(formatPrescriptionDate('2026-08-12T10:00:00.000Z'), /2026/);
+  t.equal(prescriptionTitle({ medications: [{ name: 'Paracétamol' }] }), 'Paracétamol');
+  t.equal(prescriptionTitle({ medications: [] }), 'Ordonnance');
   t.end();
 });
 
@@ -302,10 +309,22 @@ test('prescriptions: prescriptionApiMessage statuts', (t) => {
 test('medicalHistory: labels + dates + metadata', (t) => {
   t.equal(medicalHistoryEventLabel('PRESCRIPTION'), 'Prescription');
   t.equal(medicalHistoryEventLabel('RECORD_UPDATE'), 'Modification du dossier');
+  t.equal(medicalHistoryEventLabel('DOCUMENT_ADDED'), 'Document ajouté');
+  t.equal(medicalHistoryEventLabel('CLINICAL_NOTE'), 'Compte rendu');
   t.equal(medicalHistoryEventVariant('PRESCRIPTION'), 'info');
   t.equal(medicalHistoryEventVariant('UNKNOWN'), 'default');
   t.equal(formatMedicalHistoryDate(null), '—');
   t.match(formatMedicalHistoryDate('2026-08-12T14:30:00.000Z'), /2026/);
+  t.equal(formatMedicalHistoryDay(null), '—');
+  t.match(formatMedicalHistoryDay('2026-08-12T14:30:00.000Z'), /12/);
+  t.equal(timelineTone('PRESCRIPTION'), 'blue');
+  t.equal(timelineTone('DOCUMENT_ADDED'), 'green');
+  t.equal(timelineTone('HOSPITALIZATION'), 'orange');
+  t.equal(timelineKindBadge('DOCUMENT_ADDED').label, 'Document');
+  t.equal(timelineKindBadge('PRESCRIPTION').tone, 'blue');
+  t.equal(timelineKindBadge('HOSPITALIZATION').label, 'Séjour');
+  t.equal(timelineMetaId({ prescriptionId: 'rx1' }, 'prescriptionId'), 'rx1');
+  t.equal(timelineMetaId({}, 'documentId'), null);
   t.equal(dateInputToIso(''), undefined);
   t.equal(dateInputToIso('2026-08-10'), '2026-08-10T00:00:00.000Z');
   t.equal(dateInputToIso('2026-08-10', true), '2026-08-10T23:59:59.999Z');
@@ -314,6 +333,7 @@ test('medicalHistory: labels + dates + metadata', (t) => {
     /Ordonnance|Création/
   );
   t.equal(medicalHistoryMetadataLabel(null), null);
+  t.equal(medicalHistoryMetadataLabel({ title: 'Compte rendu urgence', noteId: 'n1' }), 'Compte rendu urgence');
   t.end();
 });
 

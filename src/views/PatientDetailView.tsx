@@ -5,11 +5,13 @@ import { usePatients } from '../composables/usePatients';
 import PatientHeader from '../components/patient/PatientHeader';
 import PatientInfoCard from '../components/patient/PatientInfoCard';
 import MedicalRecordCard from '../components/patient/MedicalRecordCard';
+import PatientDocuments from '../components/document/PatientDocuments';
+import PatientClinicalNotes from '../components/clinical-note/PatientClinicalNotes';
 import PatientPrescriptions from '../components/prescription/PatientPrescriptions';
 import PatientMedicalHistory from '../components/history/PatientMedicalHistory';
 import { LoadingState, ErrorState, ConfirmDialog } from '../components/ui';
 
-type DetailTab = 'informations' | 'dossier';
+type DetailTab = 'informations' | 'dossier' | 'ordonnances';
 
 export default defineComponent({
   name: 'PatientDetailView',
@@ -17,7 +19,7 @@ export default defineComponent({
     const route = useRoute();
     const router = useRouter();
     const auth = useAuthStore();
-    const tab = ref<DetailTab>('informations');
+    const tab = ref<DetailTab>('dossier');
     const deleteOpen = ref(false);
     const deleting = ref(false);
 
@@ -125,16 +127,35 @@ export default defineComponent({
               >
                 Dossier médical
               </button>
+              <button
+                type="button"
+                role="tab"
+                class={`patient-tab ${tab.value === 'ordonnances' ? 'active' : ''}`}
+                aria-selected={tab.value === 'ordonnances'}
+                onClick={() => {
+                  tab.value = 'ordonnances';
+                }}
+              >
+                Ordonnances
+              </button>
             </div>
 
             <div class="patient-detail-grid">
               {tab.value === 'informations' && <PatientInfoCard patient={patient.value} />}
               {tab.value === 'dossier' && (
                 <>
-                  <MedicalRecordCard patient={patient.value} />
-                  <PatientPrescriptions patientId={patient.value.id} />
-                  <PatientMedicalHistory patientId={patient.value.id} />
+                  <div class="dossier-split">
+                    <PatientDocuments patientId={patient.value.id} />
+                    <PatientMedicalHistory patientId={patient.value.id} />
+                  </div>
+                  <div class="dossier-split">
+                    <PatientClinicalNotes patientId={patient.value.id} />
+                    <MedicalRecordCard patient={patient.value} />
+                  </div>
                 </>
+              )}
+              {tab.value === 'ordonnances' && (
+                <PatientPrescriptions patientId={patient.value.id} />
               )}
             </div>
           </>

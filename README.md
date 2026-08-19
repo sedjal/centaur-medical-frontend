@@ -84,4 +84,4 @@ Les JWT (`centaur_token`, `centaur_mfa_token`, `centaur_temp_token`) sont dans *
 
 ## Seed users (backend)
 
-See backend README. Demo password: `Admin123!`
+See backend README. Set `SEED_ADMIN_PASSWORD` in the environment; do not commit it.

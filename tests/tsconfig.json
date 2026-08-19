@@ -11,8 +11,8 @@
   "include": [
     "./**/*.ts",
     "./**/*.tsx",
+    "./jsdom.d.ts",
     "../src/**/*.ts",
-    "../src/**/*.tsx",
-    "../src/shims-jsdom.d.ts"
+    "../src/**/*.tsx"
   ]
 }

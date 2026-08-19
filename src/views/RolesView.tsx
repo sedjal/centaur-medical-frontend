@@ -15,8 +15,16 @@ const PERM_GROUPS: Array<{ title: string; codes: string[] }> = [
     codes: ['users:read', 'users:create', 'users:update', 'users:delete'],
   },
   {
+    title: 'Documents',
+    codes: ['documents:read', 'documents:create', 'documents:delete'],
+  },
+  {
+    title: 'Comptes rendus',
+    codes: ['reports:read', 'reports:create'],
+  },
+  {
     title: 'Administration',
-    codes: ['roles:manage', 'audit:read', 'reports:read'],
+    codes: ['roles:manage', 'audit:read'],
   },
 ];
 

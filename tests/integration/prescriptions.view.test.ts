@@ -265,8 +265,9 @@ test('intégration PatientDetail: ordonnances dans dossier (prescriptions:read)'
       routes: rxRoutes(),
     });
     await flushPromises();
-    const dossierTab = wrapper.findAll('button').find((b) => /Dossier médical/.test(b.text()));
-    await dossierTab!.trigger('click');
+    const rxTab = wrapper.findAll('button').find((b) => /^Ordonnances$/.test(b.text().trim()));
+    t.ok(rxTab);
+    await rxTab!.trigger('click');
     await flushPromises();
     t.ok(stub.calledWith('/patients/p1/prescriptions'));
     t.match(wrapper.text(), /Ordonnances/);
@@ -289,8 +290,9 @@ test('intégration PatientDetail: sans prescriptions:read → pas de contenu ord
       routes: rxRoutes(),
     });
     await flushPromises();
-    const dossierTab = wrapper.findAll('button').find((b) => /Dossier médical/.test(b.text()));
-    await dossierTab!.trigger('click');
+    const rxTab = wrapper.findAll('button').find((b) => /^Ordonnances$/.test(b.text().trim()));
+    t.ok(rxTab);
+    await rxTab!.trigger('click');
     await flushPromises();
     t.equal(stub.calledWith('/patients/p1/prescriptions'), false);
     t.match(wrapper.text(), /autorisation de consulter les ordonnances/i);
@@ -319,8 +321,9 @@ test('intégration PatientDetail: prescriptions:create affiche Nouvelle ordonnan
       routes: rxRoutes(),
     });
     await flushPromises();
-    const dossierTab = wrapper.findAll('button').find((b) => /Dossier médical/.test(b.text()));
-    await dossierTab!.trigger('click');
+    const rxTab = wrapper.findAll('button').find((b) => /^Ordonnances$/.test(b.text().trim()));
+    t.ok(rxTab);
+    await rxTab!.trigger('click');
     await flushPromises();
     t.match(wrapper.text(), /Nouvelle ordonnance/);
     t.match(wrapper.text(), /Aucune ordonnance/);

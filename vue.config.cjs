@@ -11,6 +11,10 @@ module.exports = defineConfig({
     },
   },
   configureWebpack: {
+    watchOptions: {
+      poll: 1000,
+      ignored: /node_modules|[\\/]tests[\\/]/,
+    },
     resolve: {
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
     },
@@ -23,7 +27,12 @@ module.exports = defineConfig({
         option.typescript = option.typescript || {};
         option.typescript.configOverwrite = {
           ...(option.typescript.configOverwrite || {}),
-          exclude: ['node_modules', 'tests'],
+          include: ['src/**/*.ts', 'src/**/*.tsx', 'src/**/*.vue', 'example/**/*.ts', 'example/**/*.vue'],
+          exclude: ['node_modules', 'dist', 'tests'],
+        };
+        option.issue = {
+          ...(option.issue || {}),
+          exclude: [...(option.issue && option.issue.exclude ? [].concat(option.issue.exclude) : []), { file: '**/tests/**' }],
         };
         args[0] = option;
         return args;

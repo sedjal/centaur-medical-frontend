@@ -1,7 +1,8 @@
 import { defineComponent, type PropType } from 'vue';
 import type { Prescription } from '../../types';
 import { formatPrescriptionDate } from '../../utils/prescriptions';
-import { Badge, Card, Button, type BadgeVariant } from '../ui';
+import { Badge, Button, type BadgeVariant } from '../ui';
+import { CmIcon } from '../ui/icons';
 
 function statusVariant(status: string): BadgeVariant {
   return status === 'ACTIVE' ? 'success' : 'warning';
@@ -26,66 +27,80 @@ export default defineComponent({
       if (!meds.length) return null;
 
       return (
-        <Card padding="md">
-          <div class="rx-card">
-            <div class="rx-card__head">
-              <div>
-                <div class="rx-card__date">{formatPrescriptionDate(rx.prescribedAt)}</div>
-                <div class="rx-card__doctor">
-                  {rx.doctorName ? `Dr ${rx.doctorName}` : 'Médecin non renseigné'}
-                </div>
-              </div>
-              <div class="rx-card__meta">
-                <Badge variant={statusVariant(rx.status)}>{statusLabel(rx.status)}</Badge>
-                <span class="rx-card__count">
-                  {meds.length} médicament{meds.length > 1 ? 's' : ''}
-                </span>
-              </div>
+        <div class="rx-card">
+          <div class="rx-card__head">
+            <div class="rx-meta-bar">
+              <span class="rx-meta-bar__item">
+                <CmIcon name="calendar" size={16} />
+                {formatPrescriptionDate(rx.prescribedAt)}
+              </span>
+              <span class="rx-meta-bar__item">
+                <CmIcon name="user" size={16} />
+                {rx.doctorName ? `Dr ${rx.doctorName}` : 'Médecin non renseigné'}
+              </span>
+              <span class="rx-meta-bar__item">
+                <Badge variant={statusVariant(rx.status)}>
+                  {rx.status === 'ACTIVE' ? <span class="cm-badge__dot" /> : null}
+                  {statusLabel(rx.status)}
+                </Badge>
+              </span>
+              <span class="rx-meta-bar__item">
+                <CmIcon name="pill" size={16} />
+                {meds.length} médicament{meds.length > 1 ? 's' : ''}
+              </span>
             </div>
-
-            <ul class="rx-meds">
-              {meds.map((m) => (
-                <li key={m.id || `${m.name}-${m.dosage}`} class="rx-med">
-                  <strong class="rx-med__name">{m.name}</strong>
-                  <div class="rx-med__grid">
-                    <span>
-                      <em>Dosage</em> {m.dosage}
-                    </span>
-                    <span>
-                      <em>Fréquence</em> {m.frequency}
-                    </span>
-                    <span>
-                      <em>Durée</em> {m.duration}
-                    </span>
-                  </div>
-                  {m.instructions ? (
-                    <p class="rx-med__instructions">{m.instructions}</p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-
-            {rx.notes ? (
-              <p class="rx-card__notes">
-                <em>Notes</em> {rx.notes}
-              </p>
-            ) : null}
-
-            {props.canCancel && rx.status === 'ACTIVE' && (
-              <div class="rx-card__actions">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  loading={props.cancelling}
-                  disabled={props.cancelling}
-                  onClick={() => props.onCancel?.()}
-                >
-                  Annuler l'ordonnance
-                </Button>
-              </div>
-            )}
           </div>
-        </Card>
+
+          <h3 class="rx-card__section">Médicaments prescrits</h3>
+          <div class="rx-meds-wrap">
+            <table class="cm-data-table__table rx-meds-table">
+              <thead>
+                <tr>
+                  <th>Médicament</th>
+                  <th>Dosage</th>
+                  <th>Fréquence</th>
+                  <th>Durée</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {meds.map((m) => (
+                  <tr key={m.id || `${m.name}-${m.dosage}`}>
+                    <td>
+                      <strong>{m.name}</strong>
+                    </td>
+                    <td>{m.dosage || '—'}</td>
+                    <td>{m.frequency || '—'}</td>
+                    <td>{m.duration || '—'}</td>
+                    <td>{m.instructions || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {rx.notes ? (
+            <p class="rx-card__notes">
+              <em>Observations</em> {rx.notes}
+            </p>
+          ) : null}
+
+          {props.canCancel && rx.status === 'ACTIVE' && (
+            <div class="rx-card__actions">
+              <Button
+                variant="danger"
+                size="sm"
+                loading={props.cancelling}
+                disabled={props.cancelling}
+                onClick={() => props.onCancel?.()}
+              >
+                <span class="btn-with-icon">
+                  <CmIcon name="trash" size={14} /> Annuler l'ordonnance
+                </span>
+              </Button>
+            </div>
+          )}
+        </div>
       );
     };
   },

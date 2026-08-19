@@ -24,19 +24,12 @@ export default defineComponent({
 
     const canReadPatients = () => auth.hasPermission('patients:read');
     const canReadPrescriptions = () => auth.hasPermission('prescriptions:read');
-    const canReadMedicalHistory = () => auth.hasPermission('medical_history:read');
     const canReadNotifications = () => auth.hasPermission('notifications:read');
 
     const mainNav: NavItem[] = [
       { name: 'dashboard', label: 'Dashboard', icon: '▦', visible: true },
       { name: 'patients', label: 'Patients', icon: '◉', visible: canReadPatients() },
       { name: 'prescriptions', label: 'Prescriptions', icon: '℞', visible: canReadPrescriptions() },
-      {
-        name: 'history',
-        label: 'Historique médical',
-        icon: '◷',
-        visible: canReadMedicalHistory(),
-      },
       {
         name: 'notifications',
         label: 'Notifications',

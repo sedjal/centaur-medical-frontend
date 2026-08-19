@@ -33,6 +33,13 @@ export function formatPrescriptionDate(value?: string | null): string {
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+export function prescriptionTitle(rx: {
+  medications?: Array<{ name?: string } | null> | null;
+}): string {
+  const first = (rx.medications || []).find((m) => m && m.name);
+  return String(first?.name || '').trim() || 'Ordonnance';
+}
+
 export function validatePrescriptionForm(
   payload: Pick<PrescriptionCreatePayload, 'prescribedAt' | 'medications'>
 ): PrescriptionFormFieldErrors {

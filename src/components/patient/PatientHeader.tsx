@@ -2,13 +2,14 @@ import { defineComponent, type PropType } from 'vue';
 import type { Patient } from '../../types';
 import { serviceLabel, initials, formatDate } from '../../utils/permissions';
 import { Badge, Button, type BadgeVariant } from '../ui';
+import { CmIcon } from '../ui/icons';
 
 function serviceBadgeVariant(service: string): BadgeVariant {
   const map: Record<string, BadgeVariant> = {
     URGENCE: 'danger',
     ONCOLOGIE: 'warning',
     CARDIOLOGIE: 'info',
-    GENERAL: 'success',
+    GENERAL: 'info',
   };
   return map[service] || 'default';
 }
@@ -54,31 +55,41 @@ export default defineComponent({
               </div>
               <div>
                 <h1 class="patient-header__name">{displayName}</h1>
-                <p class="patient-header__code">Code patient : {p.patient_code || 'N/A'}</p>
+                <p class="patient-header__code">{p.patient_code || 'N/A'}</p>
                 <div class="patient-header__meta">
                   <Badge variant={serviceBadgeVariant(p.service)}>{serviceLabel(p.service)}</Badge>
-                  <Badge variant={statusBadgeVariant(p.status)}>{statusLabel(p.status)}</Badge>
+                  <Badge variant={statusBadgeVariant(p.status)}>
+                    {String(p.status).toUpperCase() !== 'CRITICAL' ? (
+                      <CmIcon name="check" size={12} />
+                    ) : null}
+                    {statusLabel(p.status)}
+                  </Badge>
                 </div>
-                <p class="patient-header__date">
-                  Hospitalisé depuis {formatDate(String(p.hospitalization_date))}
-                </p>
               </div>
             </div>
 
-            {(props.canUpdate || props.canDelete) && (
-              <div class="patient-header__actions">
-                {props.canUpdate && (
-                  <Button variant="primary" onClick={() => props.onEdit?.()}>
-                    Modifier
-                  </Button>
-                )}
-                {props.canDelete && (
-                  <Button variant="danger" onClick={() => props.onDelete?.()}>
-                    Supprimer
-                  </Button>
-                )}
-              </div>
-            )}
+            <div class="patient-header__aside">
+              <p class="patient-header__date">
+                <CmIcon name="calendar" size={16} />
+                Hospitalisé depuis {formatDate(String(p.hospitalization_date))}
+              </p>
+              {(props.canUpdate || props.canDelete) && (
+                <div class="patient-header__actions">
+                  {props.canUpdate && (
+                    <Button variant="primary" onClick={() => props.onEdit?.()}>
+                      <span class="btn-with-icon">
+                        <CmIcon name="pencil" size={16} /> Modifier
+                      </span>
+                    </Button>
+                  )}
+                  {props.canDelete && (
+                    <Button variant="danger" onClick={() => props.onDelete?.()}>
+                      Supprimer
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       );

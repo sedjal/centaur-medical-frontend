@@ -37,6 +37,14 @@ if (!g.__centaurDom) {
   g.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
   g.requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 0);
   g.cancelAnimationFrame = (id: number) => clearTimeout(id);
+
+  if (typeof dom.window.URL.createObjectURL !== 'function') {
+    dom.window.URL.createObjectURL = () => 'blob:http://localhost/mock';
+  }
+  if (typeof dom.window.URL.revokeObjectURL !== 'function') {
+    dom.window.URL.revokeObjectURL = () => undefined;
+  }
+  g.URL = dom.window.URL;
 }
 
 const dom = g.__centaurDom as InstanceType<typeof JSDOM>;

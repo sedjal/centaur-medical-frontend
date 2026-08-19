@@ -73,10 +73,14 @@ export const useAuthStore = defineStore('auth', () => {
         return { status: 'OK' as const };
       }
       if (result.status === 'REQUIRES_MFA') {
+        token.value = null;
+        localStorage.removeItem('centaur_token');
         mfaToken.value = result.mfaToken;
         localStorage.setItem('centaur_mfa_token', result.mfaToken);
         return { status: 'REQUIRES_MFA' as const, email: result.email };
       }
+      token.value = null;
+      localStorage.removeItem('centaur_token');
       tempToken.value = result.tempToken;
       localStorage.setItem('centaur_temp_token', result.tempToken);
       return { status: 'CHANGE_PASSWORD' as const, tempToken: result.tempToken };

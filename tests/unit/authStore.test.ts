@@ -1,7 +1,4 @@
-/**
- * UNIT FE — auth store (tape + sinon sur axios `api`)
- * On stubbe `api.post/get` (objet mutable), pas les exports ESM.
- */
+
 import test from 'tape';
 import sinon from 'sinon';
 import { setActivePinia, createPinia } from 'pinia';
@@ -37,6 +34,7 @@ test('auth store: login OK stocke le JWT', async (t) => {
 test('auth store: REQUIRES_MFA', async (t) => {
   setActivePinia(createPinia());
   localStorage.clear();
+  localStorage.setItem('centaur_token', 'stale-access');
   const stub = sinon.stub(api, 'post').resolves({
     data: {
       status: 'REQUIRES_MFA',
@@ -46,9 +44,12 @@ test('auth store: REQUIRES_MFA', async (t) => {
   } as any);
 
   const store = useAuthStore();
+  store.token = 'stale-access';
   const result = await store.login('a@b.c', 'x');
   t.equal(result.status, 'REQUIRES_MFA');
   t.equal(store.mfaToken, 'mfa-tok');
+  t.equal(store.token, null);
+  t.equal(localStorage.getItem('centaur_token'), null);
   stub.restore();
   t.end();
 });

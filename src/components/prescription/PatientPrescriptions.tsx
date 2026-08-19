@@ -2,16 +2,32 @@ import { defineComponent, onMounted, ref, computed, watch } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 import { usePrescriptions } from '../../composables/usePrescriptions';
 import type { Prescription, PrescriptionCreatePayload } from '../../types';
+import { formatDate } from '../../utils/permissions';
+import { prescriptionTitle } from '../../utils/prescriptions';
 import {
   Button,
+  Card,
+  DataTable,
   EmptyState,
   LoadingState,
   ErrorState,
   Modal,
   ConfirmDialog,
+  Badge,
+  type BadgeVariant,
+  type DataTableColumn,
 } from '../ui';
+import { CmIcon } from '../ui/icons';
 import PrescriptionCard from './PrescriptionCard';
 import PrescriptionForm from './PrescriptionForm';
+
+function statusVariant(status: string): BadgeVariant {
+  return status === 'ACTIVE' ? 'success' : 'warning';
+}
+
+function statusLabel(status: string): string {
+  return status === 'CANCELLED' ? 'Annulée' : 'Active';
+}
 
 export default defineComponent({
   name: 'PatientPrescriptions',
@@ -25,6 +41,7 @@ export default defineComponent({
     const canCancel = computed(() => auth.hasPermission('prescriptions:cancel'));
 
     const formOpen = ref(false);
+    const detail = ref<Prescription | null>(null);
     const cancelTarget = ref<Prescription | null>(null);
     const successMessage = ref<string | null>(null);
 
@@ -80,6 +97,7 @@ export default defineComponent({
       try {
         await cancelPrescription(id);
         cancelTarget.value = null;
+        if (detail.value?.id === id) detail.value = null;
         await load();
       } catch {
         cancelTarget.value = null;
@@ -90,70 +108,154 @@ export default defineComponent({
       prescriptions.value.filter((rx) => (rx.medications || []).some((m) => m && m.name))
     );
 
-    return () => (
-      <div class="prescriptions-section">
-        <div class="section-head">
-          <h2>Ordonnances</h2>
-          {canRead.value && canCreate.value && (
+    const columns = computed<DataTableColumn<Prescription>[]>(() => [
+      {
+        key: 'prescribedAt',
+        label: 'Date',
+        render: (row) => formatDate(row.prescribedAt),
+      },
+      {
+        key: 'title',
+        label: 'Titre',
+        render: (row) => prescriptionTitle(row),
+      },
+      {
+        key: 'status',
+        label: 'Statut',
+        render: (row) => (
+          <Badge variant={statusVariant(row.status)}>
+            {row.status === 'ACTIVE' ? <span class="cm-badge__dot" /> : null}
+            {statusLabel(row.status)}
+          </Badge>
+        ),
+      },
+      {
+        key: 'doctorName',
+        label: 'Médecin',
+        render: (row) => (row.doctorName ? `Dr ${row.doctorName}` : '—'),
+      },
+      {
+        key: 'actions',
+        label: 'Actions',
+        className: 'col-actions',
+        render: (row) => (
+          <div class="row-actions">
             <Button
+              variant="outline"
               size="sm"
               onClick={() => {
-                successMessage.value = null;
-                formOpen.value = true;
+                detail.value = row;
               }}
             >
-              Nouvelle ordonnance
+              <span class="btn-with-icon">
+                <CmIcon name="eye" size={14} /> Voir
+              </span>
             </Button>
-          )}
-        </div>
-
-        {!canRead.value && (
-          <EmptyState
-            title="Accès restreint"
-            description="Vous n'avez pas l'autorisation de consulter les ordonnances."
-          />
-        )}
-
-        {canRead.value && loading.value && visible.value.length === 0 && (
-          <LoadingState message="Chargement des ordonnances…" />
-        )}
-
-        {canRead.value && !loading.value && actionMessage.value && visible.value.length === 0 && (
-          <ErrorState
-            title="Impossible de charger les ordonnances"
-            message={actionMessage.value}
-            retry={() => void load()}
-          />
-        )}
-
-        {canRead.value && successMessage.value && (
-          <p class="rx-success" role="status">
-            {successMessage.value}
-          </p>
-        )}
-
-        {canRead.value && !loading.value && !actionMessage.value && visible.value.length === 0 && (
-          <EmptyState
-            title="Aucune ordonnance"
-            description="Ce patient ne possède aucune ordonnance enregistrée."
-          />
-        )}
-
-        {canRead.value && visible.value.length > 0 && (
-          <div class="rx-list">
-            {visible.value.map((rx) => (
-              <PrescriptionCard
-                key={rx.id}
-                prescription={rx}
-                canCancel={canCancel.value}
-                cancelling={cancellingId.value === rx.id}
-                onCancel={() => {
-                  cancelTarget.value = rx;
+            {canCancel.value && row.status === 'ACTIVE' && (
+              <Button
+                variant="danger"
+                size="sm"
+                loading={cancellingId.value === row.id}
+                disabled={cancellingId.value === row.id}
+                onClick={() => {
+                  cancelTarget.value = row;
                 }}
-              />
-            ))}
+              >
+                <span class="btn-with-icon">
+                  <CmIcon name="trash" size={14} /> Annuler
+                </span>
+              </Button>
+            )}
           </div>
+        ),
+      },
+    ]);
+
+    return () => (
+      <div class="prescriptions-section">
+        {!canRead.value && (
+          <Card title="Ordonnances" icon="clipboard" padding="none">
+            <EmptyState
+              title="Accès restreint"
+              description="Vous n'avez pas l'autorisation de consulter les ordonnances."
+              icon="clipboard"
+            />
+          </Card>
         )}
+
+        {canRead.value && (
+          <Card
+            title="Ordonnances"
+            icon="clipboard"
+            padding="none"
+            actions={
+              canCreate.value ? (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    successMessage.value = null;
+                    formOpen.value = true;
+                  }}
+                >
+                  + Nouvelle ordonnance
+                </Button>
+              ) : undefined
+            }
+          >
+            {loading.value && visible.value.length === 0 && (
+              <div class="dossier-panel__alerts">
+                <LoadingState message="Chargement des ordonnances…" />
+              </div>
+            )}
+
+            {!loading.value && actionMessage.value && visible.value.length === 0 && (
+              <div class="dossier-panel__alerts">
+                <ErrorState
+                  title="Impossible de charger les ordonnances"
+                  message={actionMessage.value}
+                  retry={() => void load()}
+                />
+              </div>
+            )}
+
+            {successMessage.value && (
+              <p class="rx-success dossier-panel__alerts" role="status">
+                {successMessage.value}
+              </p>
+            )}
+
+            {!(loading.value && visible.value.length === 0) &&
+              !(actionMessage.value && visible.value.length === 0) && (
+                <DataTable
+                  columns={columns.value}
+                  rows={visible.value}
+                  rowKey="id"
+                  emptyTitle="Aucune ordonnance"
+                  emptyDescription="Ce patient ne possède aucune ordonnance enregistrée."
+                />
+              )}
+          </Card>
+        )}
+
+        <Modal
+          open={Boolean(detail.value)}
+          title={detail.value ? prescriptionTitle(detail.value) : 'Ordonnance'}
+          size="lg"
+          onClose={() => {
+            detail.value = null;
+          }}
+        >
+          {detail.value && (
+            <PrescriptionCard
+              prescription={detail.value}
+              canCancel={canCancel.value}
+              cancelling={cancellingId.value === detail.value.id}
+              onCancel={() => {
+                cancelTarget.value = detail.value;
+              }}
+            />
+          )}
+        </Modal>
 
         <Modal
           open={formOpen.value}

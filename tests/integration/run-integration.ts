@@ -8,6 +8,8 @@ import './patient.form.test';
 import './dashboard.view.test';
 import './prescriptions.view.test';
 import './history.view.test';
+import './documents.view.test';
+import './clinical-notes.view.test';
 import './notifications.view.test';
 import '../e2e/notification-sse.e2e.test';
 

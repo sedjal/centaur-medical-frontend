@@ -22,6 +22,7 @@ const STATUS_MESSAGES: Record<number, string> = {
   403: "Vous n'avez pas les permissions nécessaires.",
   404: 'Ressource introuvable.',
   409: 'Conflit avec l’état actuel de la ressource.',
+  413: 'Fichier trop volumineux.',
   422: 'Les données fournies sont incorrectes.',
   429: 'Trop de requêtes. Réessayez plus tard.',
   500: 'Une erreur serveur est survenue.',
@@ -100,6 +101,17 @@ export function parseApiError(error: unknown): ApiError {
   return new ApiError('Une erreur est survenue.', 0);
 }
 
+export function handleUnauthorized(reqUrl = ''): void {
+  if (reqUrl.includes('/auth/logout')) return;
+  const hash = window.location.hash || '';
+  if (isPublicAuthRoute(hash)) return;
+  if (unauthorizedHandler) unauthorizedHandler();
+  else clearSessionTokens();
+  if (!hash.includes('/login')) {
+    window.location.hash = '#/login';
+  }
+}
+
 export const api: AxiosInstance = axios.create({
   baseURL,
   timeout: 20_000,
@@ -124,14 +136,7 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     if (status === 401) {
-      const hash = window.location.hash || '';
-      if (!isPublicAuthRoute(hash)) {
-        if (unauthorizedHandler) unauthorizedHandler();
-        else clearSessionTokens();
-        if (!hash.includes('/login')) {
-          window.location.hash = '#/login';
-        }
-      }
+      handleUnauthorized(reqUrl);
     }
     return Promise.reject(error);
   }

@@ -3,6 +3,7 @@ import type { Patient, ServiceType, SpecialtyData } from '../../types';
 import { mapSpecialtyFromApi } from '../../utils/patientForm';
 import { serviceLabel } from '../../utils/permissions';
 import { Card, EmptyState } from '../ui';
+import { CmIcon } from '../ui/icons';
 
 function display(value: string | number | null | undefined): string {
   if (value == null || value === '') return 'N/A';
@@ -50,26 +51,30 @@ export default defineComponent({
       const hasAny = fields.some((f) => f.value !== 'N/A');
 
       return (
-        <Card
-          title="Dossier médical"
-          subtitle={`Service : ${serviceLabel(p.service)}`}
-          padding="md"
-        >
+        <Card title="Dossier médical" icon="folder" padding="md">
+          <p class="medical-record__service">
+            <span>Service :</span> {serviceLabel(p.service)}
+          </p>
           {!hasAny ? (
             <EmptyState
               title="Aucune donnée spécialisée"
               description="Le dossier spécialisé ne contient pas encore d'informations renseignées."
+              icon="folder"
             />
           ) : (
             <div class="medical-fields">
               {fields.map((f) => (
                 <div class="medical-field" key={f.label}>
-                  <div class="medical-field__label">{f.label}</div>
+                  <div class="medical-field__label">{f.label === 'Notes' ? 'Notes médicales' : f.label}</div>
                   <div class="medical-field__value">{f.value}</div>
                 </div>
               ))}
             </div>
           )}
+          <p class="medical-record__secure">
+            <CmIcon name="shield" size={16} />
+            Les notes sont sécurisées et accessibles uniquement aux professionnels autorisés.
+          </p>
         </Card>
       );
     };

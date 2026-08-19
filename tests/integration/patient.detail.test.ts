@@ -58,8 +58,22 @@ async function mountDetail(
       response: { status: options.rejectStatus, data: { error: 'err' } },
     });
   } else {
-    stub = sinon.stub(api, 'get').resolves({ data: patientData } as any);
+    stub = sinon.stub(api, 'get').callsFake(async (url: string) => {
+      const path = String(url);
+      if (path.includes('/clinical-notes')) return { data: [] } as any;
+      if (path.includes('/prescriptions')) return { data: [] } as any;
+      if (path.includes('/medical-history')) return { data: { items: [], total: 0 } } as any;
+      return { data: patientData } as any;
+    });
   }
+
+  const fetchStub = sinon.stub(globalThis, 'fetch').callsFake(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/documents') && !url.includes('/file')) {
+      return new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    return new Response('{}', { status: 404 });
+  });
 
   const mounted = await mountView(PatientDetailView, {
     path: '/patients/p1',
@@ -68,11 +82,11 @@ async function mountDetail(
     routes: detailRoutes(),
   });
   await flushPromises();
-  return { ...mounted, stub };
+  return { ...mounted, stub, fetchStub };
 }
 
 test('intégration PatientDetail: patients:read charge GET /patients/:id', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'service:urgence'],
     basePatient()
   );
@@ -84,16 +98,22 @@ test('intégration PatientDetail: patients:read charge GET /patients/:id', async
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: onglet Informations affiche champs généraux', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'service:urgence'],
     basePatient()
   );
   try {
+    await flushPromises();
+    const infoTab = wrapper.findAll('button').find((b) => /^Informations$/.test(b.text().trim()));
+    t.ok(infoTab);
+    await infoTab!.trigger('click');
+    await flushPromises();
     t.match(wrapper.text(), /Informations/);
     t.match(wrapper.text(), /Code patient/);
     t.match(wrapper.text(), /Hospitalisation|hospitalisation/i);
@@ -102,12 +122,13 @@ test('intégration PatientDetail: onglet Informations affiche champs généraux'
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: URGENCE affiche specialty', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'service:urgence'],
     basePatient()
   );
@@ -122,12 +143,13 @@ test('intégration PatientDetail: URGENCE affiche specialty', async (t) => {
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: GENERAL affiche notes', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'service:general'],
     basePatient({
       service: 'GENERAL',
@@ -144,12 +166,13 @@ test('intégration PatientDetail: GENERAL affiche notes', async (t) => {
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: ONCOLOGIE affiche specialty', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'service:oncologie'],
     basePatient({
       service: 'ONCOLOGIE',
@@ -167,12 +190,13 @@ test('intégration PatientDetail: ONCOLOGIE affiche specialty', async (t) => {
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: CARDIOLOGIE affiche specialty', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'service:cardiologie'],
     basePatient({
       service: 'CARDIOLOGIE',
@@ -194,12 +218,13 @@ test('intégration PatientDetail: CARDIOLOGIE affiche specialty', async (t) => {
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: sans patients:update → pas Modifier', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'service:urgence'],
     basePatient()
   );
@@ -208,12 +233,13 @@ test('intégration PatientDetail: sans patients:update → pas Modifier', async 
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: patients:update → Modifier + navigation edit', async (t) => {
-  const { wrapper, router, stub } = await mountDetail(
+  const { wrapper, router, stub, fetchStub } = await mountDetail(
     ['patients:read', 'patients:update', 'service:urgence'],
     basePatient()
   );
@@ -228,12 +254,13 @@ test('intégration PatientDetail: patients:update → Modifier + navigation edit
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: patients:delete → Supprimer + confirm', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'patients:delete', 'service:urgence'],
     basePatient()
   );
@@ -252,13 +279,14 @@ test('intégration PatientDetail: patients:delete → Supprimer + confirm', asyn
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     delStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: sans patients:delete → pas Supprimer', async (t) => {
-  const { wrapper, stub } = await mountDetail(
+  const { wrapper, stub, fetchStub } = await mountDetail(
     ['patients:read', 'service:urgence'],
     basePatient()
   );
@@ -267,12 +295,13 @@ test('intégration PatientDetail: sans patients:delete → pas Supprimer', async
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: 404 → ErrorState', async (t) => {
-  const { wrapper, stub } = await mountDetail(['patients:read', 'service:urgence'], null, {
+  const { wrapper, stub, fetchStub } = await mountDetail(['patients:read', 'service:urgence'], null, {
     rejectStatus: 404,
   });
   try {
@@ -281,12 +310,13 @@ test('intégration PatientDetail: 404 → ErrorState', async (t) => {
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });
 
 test('intégration PatientDetail: 403 → message autorisation', async (t) => {
-  const { wrapper, stub } = await mountDetail(['patients:read', 'service:urgence'], null, {
+  const { wrapper, stub, fetchStub } = await mountDetail(['patients:read', 'service:urgence'], null, {
     rejectStatus: 403,
   });
   try {
@@ -294,6 +324,7 @@ test('intégration PatientDetail: 403 → message autorisation', async (t) => {
     wrapper.unmount();
   } finally {
     stub.restore();
+    fetchStub.restore();
     t.end();
   }
 });

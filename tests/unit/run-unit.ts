@@ -10,5 +10,7 @@ import './ui.components.test';
 import './api.composables.test';
 import './prescriptions.api.test';
 import './medical-history.api.test';
+import './documents.api.test';
+import './clinical-notes.api.test';
 import './notifications.api.test';
 import './notifications.sse.test';
