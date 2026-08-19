@@ -2,46 +2,38 @@
 
 Medical Records Management System — Hospital Patient Management**
 
-Vue 3 + TypeScript (strict) + **JSX** (no SFC `.vue`), consommé via `example/`.
 
-## Stack
 
+Stack
 - Vue 3 / TypeScript / JSX
 - Axios, Pinia, Vue Router
 - Vue CLI 5 + Webpack
 
-
-## Quick start
-
 bash
 npm install
 npm run serve
-```
-
 Open http://localhost:8084/
 
 Le dev server proxy `/api` → `http://127.0.0.1:3000` (Gateway backend).
-
-### Prérequis
+ Prérequis
 
 Le backend doit tourner (`npm run dev` dans `centaur-medical-backend`).
-
-## Environment
+Environment
 
 Copier `.env.example` → `.env.local` (optionnel) :
 
-```env
+env
 # URL de l'API Gateway (optionnel — le proxy Vue CLI suffit en dev)
 VUE_APP_API_URL=http://127.0.0.1:3000/api
-```
+
 
 | Variable | Défaut | Description |
 |----------|--------|-------------|
 | `VUE_APP_API_URL` | proxy `/api` | Base URL Axios en production |
 
-## Architecture
+Architecture
 
-```text
+text
 example/main.ts
     └── createCentaurMedicalApp()
             ├── Pinia (auth)
@@ -65,22 +57,21 @@ src/
 ├── stores/           # Pinia (auth)
 └── styles/           # tokens.css + global.css
 
+Fonctionnalités
 
-## Fonctionnalités
-
-### Authentification
+ Authentification
 
 - Login + MFA email (ADMIN / DIRECTION)
 - Changement de mot de passe obligatoire (1ʳᵉ connexion) en cas d'ajout des utilisateur l'utilisateur doit changer le mdps attribué par admin 
 - Mot de passe oublié par code d'identification par  email puis il introduit nouveau mdps
 - Refresh token automatique (~10 min)
 
-### Dashboard
+ Dashboard
 
 - KPIs patients (total, critiques, admis aujourd'hui, lits)
 - Occupation par service (Chirurgie générale, Urgences, Oncologie, Cardiologie)
 
-### Patients
+ Patients
 
 - Liste avec recherche (nom, prénom, code patient) + filtre service
 - Pagination  : affichage 5 par page , chargement par chunks de 50 depuis l'API
@@ -126,24 +117,22 @@ Stratégie **« fetch 50, afficher 5 »** :
 
 Composables concernés : `usePatients`, `usePrescriptions`, `NotificationsView`.
 
-## Tests
-
-```bash
+Tests
+bash
 npm run test:unit          # tests unitaires
 npm run test:integration   # tests intégration (jsdom + Vue Test Utils)
 npm run test:all           # les deux
 npm run test:coverage      
 
-Stack : **tape** + **sinon** + **tsx** + **jsdom** + **Vue Test Utils**.
+Stack : tape** + sinon + tsx + jsdom + Vue Test Utils.
 
-```text
+text
 tests/
 ├── unit/            # API, composables, stores, utils, composants UI
 ├── integration/     # vues complètes + garde router
 └── e2e/             # SSE notifications (optionnel)
-```
 
-### Tests unitaires
+Tests unitaires
 
 | Fichier | Couvre |
 |---------|--------|
@@ -163,7 +152,7 @@ tests/
 | `unit/usersService.test.ts` | CRUD utilisateurs |
 | `unit/userStore.test.ts` | Store utilisateurs |
 
-### Tests intégration
+Tests intégration
 
 | Fichier | Couvre |
 |---------|--------|
@@ -180,7 +169,7 @@ tests/
 | `integration/notifications.view.test.ts` | Inbox + badge Topbar |
 | `integration/dashboard.view.test.ts` | KPIs dashboard |
 
-## Token storage
+Token storage
 
 Les JWT (`centaur_token`, `centaur_mfa_token`, `centaur_temp_token`) sont dans **`localStorage`**.
 
@@ -188,10 +177,8 @@ Mitigations : TTL court (15 min), refresh automatique, purge sur 401 et au logou
 
 Le frontend masque les services via `service:*` ; le backend bloque (403) si hors périmètre.
 
-## Comptes de démonstration
-
-Voir le README backend. Mot de passe = variable `SEED_ADMIN_PASSWORD` dans le `.env` backend (**ne jamais committer**).
-
+Comptes de démonstration
+mdps : lydia2001
 | Email | Rôle |
 |-------|------|
 | sedjalkhouloud@gmail.com | ADMIN (MFA) | mdps lydia2001
@@ -199,7 +186,7 @@ Voir le README backend. Mot de passe = variable `SEED_ADMIN_PASSWORD` dans le `.
 | rachasl720@gmail.com | MEDECIN | mdps lydia2001
 | khouloudsed2@gmail.com | SECRETAIRE |mdps lydia2001
 
-## Scripts npm
+ Scripts npm
 
 | Script | Description |
 |--------|-------------|
