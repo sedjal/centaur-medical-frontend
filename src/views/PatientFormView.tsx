@@ -98,6 +98,7 @@ export default defineComponent({
       clearError();
       try {
         const p = await fetchPatient(patientId.value);
+        if (!p) throw new Error('Patient introuvable');
         suppressServiceReset = true;
         patientCode.value = p.patient_code;
         form.value = {

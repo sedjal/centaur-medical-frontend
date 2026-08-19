@@ -109,7 +109,7 @@ export default defineComponent({
     const successMessage = ref<string | null>(null);
 
     const {
-      prescriptions,
+      allPrescriptions: prescriptions,
       loading,
       saving,
       cancellingId,
@@ -139,6 +139,13 @@ export default defineComponent({
       }
     );
 
+    // Reload if permissions were not yet available at mount time
+    watch(canRead, (val) => {
+      if (val && prescriptions.value.length === 0 && !loading.value) {
+        void load();
+      }
+    });
+
     async function onCreate(payload: PrescriptionCreatePayload) {
       try {
         await createPrescription(payload);
@@ -167,9 +174,8 @@ export default defineComponent({
       }
     }
 
-    const visible = computed(() =>
-      prescriptions.value.filter((rx) => (rx.medications || []).some((m) => m && m.name))
-    );
+    // Show all prescriptions — medications may be empty for old records
+    const visible = computed(() => prescriptions.value);
 
     const getSequentialNumber = (rxId: string) => {
       const sorted = [...visible.value].sort(

@@ -26,6 +26,7 @@ import {
   ErrorState,
   Modal,
   ConfirmDialog,
+  Pagination,
 } from '../components/ui';
 import NotificationList from '../components/notification/NotificationList';
 import NotificationForm from '../components/notification/NotificationForm';
@@ -52,6 +53,18 @@ export default defineComponent({
     const users = ref<AppUser[]>([]);
     const loadingRecipients = ref(false);
     const successMessage = ref<string | null>(null);
+
+    const notifDisplayPage = ref(1);
+    const notifTotal = ref(0);
+    const notifBuffer = ref<import('../types').AppNotification[]>([]);
+    const notifBackendPage = ref(1);
+    const NOTIF_DISPLAY_SIZE = 5;
+    const NOTIF_FETCH_SIZE = 50;
+
+    const pagedNotifications = computed(() => {
+      const start = (notifDisplayPage.value - 1) * NOTIF_DISPLAY_SIZE;
+      return notifBuffer.value.slice(start, start + NOTIF_DISPLAY_SIZE);
+    });
 
     const {
       notifications,
@@ -103,7 +116,7 @@ export default defineComponent({
       }
     }
 
-    function listParams(): NotificationListParams {
+    function baseParams(): NotificationListParams {
       return {
         read:
           readFilter.value === 'unread'
@@ -115,19 +128,48 @@ export default defineComponent({
       };
     }
 
-    async function load() {
+    async function fetchChunk(backendPage: number, resetBuffer: boolean) {
       if (!canRead.value) return;
       try {
-        await fetchNotifications(listParams());
+        const result = await fetchNotifications({
+          ...baseParams(),
+          page: backendPage,
+          limit: NOTIF_FETCH_SIZE,
+        });
+        if (!result) return;
+        const data = result as unknown as { items: import('../types').AppNotification[]; total: number; page: number };
+        if (resetBuffer) {
+          notifBuffer.value = data.items ?? notifications.value;
+          notifDisplayPage.value = 1;
+        } else {
+          notifBuffer.value = [...notifBuffer.value, ...(data.items ?? [])];
+        }
+        notifTotal.value = data.total ?? notifications.value.length;
+        notifBackendPage.value = data.page ?? backendPage;
       } catch {
         /* actionMessage */
       }
     }
 
+    async function load(resetBuffer = true) {
+      if (!canRead.value) return;
+      await fetchChunk(resetBuffer ? 1 : notifBackendPage.value + 1, resetBuffer);
+    }
+
+    async function goToNotifPage(page: number) {
+      const maxDisplayable = Math.ceil(notifBuffer.value.length / NOTIF_DISPLAY_SIZE);
+      const hasMore = notifBuffer.value.length < notifTotal.value;
+      if (page > maxDisplayable && hasMore) {
+        await load(false);
+      }
+      const maxPage = Math.max(1, Math.ceil(notifTotal.value / NOTIF_DISPLAY_SIZE));
+      notifDisplayPage.value = Math.min(page, maxPage);
+    }
+
     function openFromQuery() {
       const id = route.query.open;
       if (!id || typeof id !== 'string') return;
-      const found = notifications.value.find((n) => n.id === id);
+      const found = notifBuffer.value.find((n) => n.id === id);
       if (found) detail.value = found;
       const nextQuery = { ...route.query } as Record<string, string | string[] | undefined>;
       delete nextQuery.open;
@@ -135,7 +177,7 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      void load().then(() => openFromQuery());
+      void load(true).then(() => openFromQuery());
       void loadDirectory();
       if (canReadPatients.value) {
         void fetchPatients().catch(() => undefined);
@@ -151,7 +193,7 @@ export default defineComponent({
 
     watch(streamRevision, () => {
       if (!canRead.value) return;
-      void load();
+      void load(true);
     });
 
     const patientLabel = computed(() => {
@@ -169,7 +211,7 @@ export default defineComponent({
         await createNotification(payload);
         formOpen.value = false;
         successMessage.value = 'Notification créée.';
-        await load();
+        // composable already prepends the new item locally — no full refetch needed
       } catch {
         /* actionMessage */
       }
@@ -192,7 +234,7 @@ export default defineComponent({
         await cancelNotification(cancelTarget.value.id);
         cancelTarget.value = null;
         detail.value = null;
-        await load();
+        // composable already updates the item locally — no full refetch needed
       } catch {
         cancelTarget.value = null;
       }
@@ -217,7 +259,7 @@ export default defineComponent({
                 )}
                 <Button
                   variant="ghost"
-                  onClick={() => void load().then(() => fetchUnreadCount())}
+                  onClick={() => void load(true)}
                   disabled={loading.value}
                 >
                   Actualiser
@@ -253,7 +295,7 @@ export default defineComponent({
               </p>
             )}
 
-            {actionMessage.value && !loading.value && notifications.value.length === 0 && (
+            {actionMessage.value && !loading.value && notifBuffer.value.length === 0 && (
               <ErrorState
                 title="Impossible de charger les notifications"
                 message={actionMessage.value}
@@ -266,34 +308,21 @@ export default defineComponent({
                 <button
                   type="button"
                   class={readFilter.value === '' ? 'notif-pill notif-pill--active' : 'notif-pill'}
-                  onClick={() => {
-                    readFilter.value = '';
-                    void load();
-                  }}
+                  onClick={() => { readFilter.value = ''; void load(true); }}
                 >
                   Toutes
                 </button>
                 <button
                   type="button"
-                  class={
-                    readFilter.value === 'unread' ? 'notif-pill notif-pill--active' : 'notif-pill'
-                  }
-                  onClick={() => {
-                    readFilter.value = 'unread';
-                    void load();
-                  }}
+                  class={readFilter.value === 'unread' ? 'notif-pill notif-pill--active' : 'notif-pill'}
+                  onClick={() => { readFilter.value = 'unread'; void load(true); }}
                 >
                   {unreadLabel.value}
                 </button>
                 <button
                   type="button"
-                  class={
-                    readFilter.value === 'read' ? 'notif-pill notif-pill--active' : 'notif-pill'
-                  }
-                  onClick={() => {
-                    readFilter.value = 'read';
-                    void load();
-                  }}
+                  class={readFilter.value === 'read' ? 'notif-pill notif-pill--active' : 'notif-pill'}
+                  onClick={() => { readFilter.value = 'read'; void load(true); }}
                 >
                   Lues
                 </button>
@@ -308,13 +337,13 @@ export default defineComponent({
                 placeholder="Tous les types"
                 onChange={(v: string) => {
                   typeFilter.value = (v as NotificationType | '') || '';
-                  void load();
+                  void load(true);
                 }}
               />
             </div>
 
             <NotificationList
-              items={notifications.value}
+              items={pagedNotifications.value}
               loading={loading.value}
               patientLabel={patientLabel.value}
               recipientLabel={canReadAll.value ? (id: string) => labelForUser(id) : undefined}
@@ -328,6 +357,12 @@ export default defineComponent({
               onOpen={(n: AppNotification) => {
                 detail.value = n;
               }}
+            />
+            <Pagination
+              page={notifDisplayPage.value}
+              limit={NOTIF_DISPLAY_SIZE}
+              total={notifTotal.value}
+              onPageChange={(p: number) => void goToNotifPage(p)}
             />
           </>
         )}

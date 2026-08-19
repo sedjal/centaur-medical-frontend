@@ -286,7 +286,11 @@ export function useNotifications() {
 
   async function refresh(params?: NotificationListParams) {
     await fetchNotifications(params);
-    await fetchUnreadCount();
+    // Derive unread count from already-loaded list instead of a second API call
+    const unread = notifications.value.filter(
+      (n) => n.status === 'SENT' || n.status === 'PENDING'
+    ).length;
+    sharedUnreadCount.value = unread;
   }
 
   return {

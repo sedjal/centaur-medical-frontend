@@ -4,10 +4,19 @@ import type { Patient, PatientFormModel } from '../types';
 export interface PatientListParams {
   service?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }
 
-export async function getPatients(params?: PatientListParams) {
-  const { data } = await api.get<Patient[]>('/patients', { params });
+export interface PatientListResult {
+  items: Patient[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function getPatients(params?: PatientListParams): Promise<PatientListResult> {
+  const { data } = await api.get<PatientListResult>('/patients', { params });
   return data;
 }
 

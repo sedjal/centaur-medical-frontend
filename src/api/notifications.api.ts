@@ -12,17 +12,28 @@ export interface NotificationListParams {
   status?: NotificationStatus;
   type?: NotificationType;
   patientId?: string;
+  page?: number;
+  limit?: number;
 }
 
-export async function getNotifications(params?: NotificationListParams) {
+export interface NotificationListResult {
+  items: AppNotification[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function getNotifications(params?: NotificationListParams): Promise<NotificationListResult> {
   const query: Record<string, string> = {};
   if (params?.read === true) query.read = 'true';
   if (params?.read === false) query.read = 'false';
   if (params?.status) query.status = params.status;
   if (params?.type) query.type = params.type;
   if (params?.patientId) query.patientId = params.patientId;
+  if (params?.page) query.page = String(params.page);
+  if (params?.limit) query.limit = String(params.limit);
 
-  const { data } = await api.get<NotificationList>('/notifications', {
+  const { data } = await api.get<NotificationListResult>('/notifications', {
     params: Object.keys(query).length ? query : undefined,
   });
   return data;

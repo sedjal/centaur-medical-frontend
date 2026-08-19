@@ -17,6 +17,7 @@ import {
   ErrorState,
   Modal,
   ConfirmDialog,
+  Pagination,
   type DataTableColumn,
   type BadgeVariant,
 } from '../components/ui';
@@ -56,9 +57,13 @@ export default defineComponent({
       saving,
       cancellingId,
       actionMessage,
+      totalPrescriptions,
+      currentPage,
+      pageLimit,
       fetchPrescriptions,
       createPrescription,
       cancelPrescription,
+      goToPage,
     } = usePrescriptions();
 
     const { patients, fetchPatients } = usePatients();
@@ -276,6 +281,12 @@ export default defineComponent({
                   rowKey="id"
                   emptyTitle="Aucune ordonnance"
                   emptyDescription="Aucune ordonnance enregistrée dans votre périmètre."
+                />
+                <Pagination
+                  page={currentPage.value}
+                  limit={pageLimit.value}
+                  total={totalPrescriptions.value}
+                  onPageChange={(p: number) => void goToPage(p)}
                 />
               </Card>
             )}

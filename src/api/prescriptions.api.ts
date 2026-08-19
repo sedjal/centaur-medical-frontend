@@ -7,10 +7,19 @@ export interface PrescriptionListParams {
   status?: PrescriptionStatus;
   from?: string;
   to?: string;
+  page?: number;
+  limit?: number;
 }
 
-export async function getPrescriptions(params?: PrescriptionListParams) {
-  const { data } = await api.get<Prescription[]>('/prescriptions', { params });
+export interface PrescriptionListResult {
+  items: Prescription[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function getPrescriptions(params?: PrescriptionListParams): Promise<PrescriptionListResult> {
+  const { data } = await api.get<PrescriptionListResult>('/prescriptions', { params });
   return data;
 }
 

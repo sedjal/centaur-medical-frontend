@@ -117,21 +117,6 @@ export default defineComponent({
           </div>
         </div>
 
-        <div class="topbar-center">
-          <div class="topbar-search">
-            <span class="topbar-search-icon" aria-hidden="true">
-              ⌕
-            </span>
-            <input
-              type="search"
-              class="topbar-search-input"
-              placeholder="Rechercher un patient…"
-              disabled
-              title="Recherche globale — disponible prochainement"
-            />
-          </div>
-        </div>
-
         <div class="topbar-right">
           {auth.hasPermission('notifications:read') ? (
             <div

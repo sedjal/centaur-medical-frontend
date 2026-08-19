@@ -19,3 +19,4 @@ export { default as Modal } from './Modal';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as CmIcon } from './icons';
 export type { IconName } from './icons';
+export { default as Pagination } from './Pagination';
