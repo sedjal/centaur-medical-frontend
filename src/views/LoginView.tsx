@@ -57,7 +57,7 @@ export default defineComponent({
           </div>
           <h1 style="margin:0 0 8px;font-size:24px">Connexion</h1>
           <p style="margin:0 0 24px;color:var(--muted);font-size:14px">
-            Accès sécurisé aux dossiers médicaux.
+            
           </p>
           {localError.value && <div class="alert alert-error">{localError.value}</div>}
           <form onSubmit={onSubmit}>

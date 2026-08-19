@@ -19,6 +19,7 @@ import {
   ConfirmDialog,
   CmIcon,
   type DataTableColumn,
+  defineDataTableColumns,
 } from '../ui';
 
 export default defineComponent({
@@ -109,7 +110,7 @@ export default defineComponent({
       }
     }
 
-    const columns = computed<DataTableColumn<ClinicalNote>[]>(() => [
+    const columns = computed(() => defineDataTableColumns<ClinicalNote>([
       { key: 'title', label: 'Titre' },
       {
         key: 'createdAt',
@@ -154,7 +155,7 @@ export default defineComponent({
           </div>
         ),
       },
-    ]);
+    ]));
 
     return () => (
       <div class="clinical-notes-section">

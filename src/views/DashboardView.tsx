@@ -21,6 +21,7 @@ import {
   DataTable,
   type DataTableColumn,
   type BadgeVariant,
+  defineDataTableColumns,
 } from '../components/ui';
 
 function serviceBadgeVariant(service: string): BadgeVariant {
@@ -81,7 +82,7 @@ export default defineComponent({
       void load();
     });
 
-    const recentColumns = computed<DataTableColumn<Patient>[]>(() => {
+    const recentColumns = computed(() => {
       const cols: DataTableColumn<Patient>[] = [
         {
           key: 'patient_code',
@@ -133,7 +134,7 @@ export default defineComponent({
         });
       }
 
-      return cols;
+      return defineDataTableColumns(cols);
     });
 
     return () => (

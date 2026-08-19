@@ -21,6 +21,7 @@ import {
   Modal,
   CmIcon,
   type DataTableColumn,
+  defineDataTableColumns,
 } from '../ui';
 
 export default defineComponent({
@@ -158,7 +159,7 @@ export default defineComponent({
       }
     }
 
-    const columns = computed<DataTableColumn<PatientDocument>[]>(() => [
+    const columns = computed(() => defineDataTableColumns<PatientDocument>([
       {
         key: 'docType',
         label: 'Document',
@@ -229,7 +230,7 @@ export default defineComponent({
           </div>
         ),
       },
-    ]);
+    ]));
 
     return () => (
       <div class="documents-section">

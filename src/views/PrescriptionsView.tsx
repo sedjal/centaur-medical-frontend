@@ -20,6 +20,7 @@ import {
   Pagination,
   type DataTableColumn,
   type BadgeVariant,
+  defineDataTableColumns,
 } from '../components/ui';
 import { CmIcon } from '../components/ui/icons';
 import PrescriptionCard from '../components/prescription/PrescriptionCard';
@@ -135,7 +136,7 @@ export default defineComponent({
       }
     }
 
-    const columns = computed<DataTableColumn<Prescription>[]>(() => [
+    const columns = computed(() => defineDataTableColumns<Prescription>([
       {
         key: 'prescribedAt',
         label: 'Date',
@@ -195,7 +196,7 @@ export default defineComponent({
           </div>
         ),
       },
-    ]);
+    ]));
 
     return () => (
       <div class="page">

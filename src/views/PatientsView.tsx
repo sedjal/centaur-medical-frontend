@@ -15,6 +15,7 @@ import {
   Pagination,
   type DataTableColumn,
   type BadgeVariant,
+  defineDataTableColumns,
 } from '../components/ui';
 
 function serviceBadgeVariant(service: string): BadgeVariant {
@@ -139,7 +140,7 @@ export default defineComponent({
       void load();
     }
 
-    const columns = computed<DataTableColumn<Patient>[]>(() => {
+    const columns = computed(() => {
       const base: DataTableColumn<Patient>[] = [
         {
           key: 'patient_code',
@@ -282,7 +283,7 @@ export default defineComponent({
         }
       );
 
-      return base;
+      return defineDataTableColumns(base);
     });
 
     return () => (

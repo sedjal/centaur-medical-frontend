@@ -2,28 +2,37 @@ import { defineComponent, type PropType } from 'vue';
 import EmptyState from './EmptyState';
 import LoadingState from './LoadingState';
 
-export interface DataTableColumn<T = Record<string, unknown>> {
+export type DataTableRow = object;
+
+export interface DataTableColumn<T extends DataTableRow = DataTableRow> {
   key: string;
   label: string;
   render?: (row: T) => unknown;
   className?: string;
 }
 
+/** Vue props cannot be generic — preserves typed `render` at call sites. */
+export function defineDataTableColumns<T extends DataTableRow>(
+  columns: DataTableColumn<T>[]
+): DataTableColumn[] {
+  return columns as DataTableColumn[];
+}
+
 export default defineComponent({
   name: 'CmDataTable',
   props: {
-    // Vue props lose generics — accept any row shape (Patient, etc.)
-    columns: { type: Array as PropType<DataTableColumn<any>[]>, required: true },
-    rows: { type: Array as PropType<any[]>, default: () => [] },
+    columns: { type: Array as PropType<DataTableColumn[]>, required: true },
+    rows: { type: Array as PropType<DataTableRow[]>, default: () => [] },
     rowKey: { type: String, default: 'id' },
     loading: { type: Boolean, default: false },
     emptyTitle: { type: String, default: 'Aucun résultat' },
     emptyDescription: { type: String, default: undefined },
   },
   setup(props) {
-    function cellValue(row: any, col: DataTableColumn<any>) {
-      if (col.render) return col.render(row) as never;
-      const val = row?.[col.key];
+    function cellValue(row: DataTableRow, col: DataTableColumn) {
+      if (col.render) return col.render(row);
+      const record = row as Record<string, unknown>;
+      const val = record[col.key];
       if (val == null || val === '') return '—';
       return String(val);
     }
@@ -59,7 +68,7 @@ export default defineComponent({
             </thead>
             <tbody>
               {props.rows.map((row, idx) => (
-                <tr key={String(row[props.rowKey] ?? idx)}>
+                <tr key={String((row as Record<string, unknown>)[props.rowKey] ?? idx)}>
                   {props.columns.map((col) => (
                     <td key={col.key} class={col.className}>
                       {cellValue(row, col)}

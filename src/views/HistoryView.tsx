@@ -22,6 +22,7 @@ import {
   LoadingState,
   ErrorState,
   type DataTableColumn,
+  defineDataTableColumns,
 } from '../components/ui';
 
 export default defineComponent({
@@ -56,7 +57,7 @@ export default defineComponent({
       void load();
     });
 
-    const columns = computed<DataTableColumn<MedicalHistoryItem>[]>(() => [
+    const columns = computed(() => defineDataTableColumns<MedicalHistoryItem>([
       {
         key: 'occurredAt',
         label: 'Date',
@@ -93,7 +94,7 @@ export default defineComponent({
         label: 'Médecin',
         render: (row) => row.doctorName || '—',
       },
-    ]);
+    ]));
 
     return () => (
       <div class="page">

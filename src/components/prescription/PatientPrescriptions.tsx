@@ -16,6 +16,7 @@ import {
   Badge,
   type BadgeVariant,
   type DataTableColumn,
+  defineDataTableColumns,
 } from '../ui';
 import { CmIcon } from '../ui/icons';
 import PrescriptionCard from './PrescriptionCard';
@@ -69,18 +70,16 @@ function downloadPrescriptionPDF(rx: Prescription, patient: Patient | null, rxNu
       html2canvas:  { scale: 2, useCORS: true, logging: false },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    // @ts-ignore
-    window.html2pdf().set(opt).from(element).save().then(() => {
+    window.html2pdf!().set(opt).from(element).save().then(() => {
       app.unmount();
       document.body.removeChild(wrapper);
-    }).catch((err: any) => {
-      console.error(err);
+    }).catch((err: unknown) => {
+      console.error(err instanceof Error ? err.message : err);
       app.unmount();
       document.body.removeChild(wrapper);
     });
   };
 
-  // @ts-ignore
   if (window.html2pdf) {
     runHtml2Pdf();
   } else {
@@ -185,7 +184,7 @@ export default defineComponent({
       return index !== -1 ? index + 1 : 1;
     };
 
-    const columns = computed<DataTableColumn<Prescription>[]>(() => [
+    const columns = computed(() => defineDataTableColumns<Prescription>([
       {
         key: 'prescribedAt',
         label: 'Date',
@@ -260,7 +259,7 @@ export default defineComponent({
           </div>
         ),
       },
-    ]);
+    ]));
 
     return () => (
       <div class="prescriptions-section">

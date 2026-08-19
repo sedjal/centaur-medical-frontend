@@ -1,3 +1,4 @@
+const path = require('path');
 const { defineConfig } = require('@vue/cli-service');
 
 module.exports = defineConfig({
@@ -20,20 +21,13 @@ module.exports = defineConfig({
     },
   },
   chainWebpack(config) {
-    // Ne pas typechecker les tests pendant `serve` / `build`
+    // Typecheck app only (exclude tests) during `serve` / `build`
     if (config.plugins.has('fork-ts-checker')) {
       config.plugin('fork-ts-checker').tap((args) => {
         const option = args[0] || {};
         option.typescript = option.typescript || {};
-        option.typescript.configOverwrite = {
-          ...(option.typescript.configOverwrite || {}),
-          include: ['src/**/*.ts', 'src/**/*.tsx', 'src/**/*.vue', 'example/**/*.ts', 'example/**/*.vue'],
-          exclude: ['node_modules', 'dist', 'tests'],
-        };
-        option.issue = {
-          ...(option.issue || {}),
-          exclude: [...(option.issue && option.issue.exclude ? [].concat(option.issue.exclude) : []), { file: '**/tests/**' }],
-        };
+        option.typescript.configFile = path.join(__dirname, 'tsconfig.app.json');
+        delete option.typescript.configOverwrite;
         args[0] = option;
         return args;
       });

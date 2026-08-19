@@ -17,6 +17,6 @@
     },
     "types": ["webpack-env"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "example/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts", "example/**/*.ts"],
   "exclude": ["node_modules", "tests"]
 }

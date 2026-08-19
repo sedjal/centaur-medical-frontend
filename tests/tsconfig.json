@@ -6,13 +6,16 @@
     "types": ["node"],
     "module": "ESNext",
     "moduleResolution": "node",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "noImplicitAny": true
   },
   "include": [
     "./**/*.ts",
     "./**/*.tsx",
     "./jsdom.d.ts",
     "../src/**/*.ts",
-    "../src/**/*.tsx"
-  ]
+    "../src/**/*.tsx",
+    "../src/**/*.d.ts"
+  ],
+  "exclude": ["../node_modules", "../dist"]
 }
