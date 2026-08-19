@@ -96,18 +96,14 @@ export default defineComponent({
 
     function submit(e: Event) {
       e.preventDefault();
-      const serializedNotes = serializePrescriptionNotes({
-        userNotes: notes.value,
-        customAge: customAge.value.trim() || undefined,
-        customGender: customGender.value.trim() || undefined,
-        customDoctor: customDoctor.value.trim() || undefined,
-      });
-
       const payload = buildCreatePayload(
         props.patientId,
         prescribedAt.value,
-        serializedNotes,
-        medications.value
+        notes.value,
+        medications.value,
+        customAge.value.trim() || undefined,
+        customGender.value.trim() || undefined,
+        customDoctor.value.trim() || undefined
       );
       const errors = validatePrescriptionForm(payload);
       fieldErrors.value = errors;

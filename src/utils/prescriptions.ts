@@ -78,7 +78,10 @@ export function buildCreatePayload(
   patientId: string,
   prescribedAtLocal: string,
   notes: string,
-  medications: PrescriptionMedicationInput[]
+  medications: PrescriptionMedicationInput[],
+  patientAge?: string,
+  patientGender?: string,
+  doctorName?: string
 ): PrescriptionCreatePayload {
   return {
     patientId,
@@ -91,6 +94,9 @@ export function buildCreatePayload(
       duration: m.duration.trim(),
       instructions: m.instructions?.trim() ? m.instructions.trim() : null,
     })),
+    patientAge: patientAge?.trim() ? patientAge.trim() : null,
+    patientGender: patientGender?.trim() ? patientGender.trim() : null,
+    doctorName: doctorName?.trim() ? doctorName.trim() : null,
   };
 }
 

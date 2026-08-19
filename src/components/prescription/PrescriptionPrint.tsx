@@ -55,14 +55,15 @@ export default defineComponent({
 
       const docService = p?.service ? serviceLabel(p.service) : 'Médecine Générale';
 
-      // Parse custom notes metadata
+      // Parse custom notes metadata (for backward compatibility with old JSON-serialized notes)
       const parsedNotes = parsePrescriptionNotes(rx.notes);
-      const docName = parsedNotes.customDoctor || rx.doctorName || 'Médecin Praticien';
-      const ageStr = parsedNotes.customAge || (p ? calcAge(p) : '—');
-      const genderStr = parsedNotes.customGender || (p ? genderLabel(p) : '—');
+      const docName = rx.doctorName || parsedNotes.customDoctor || 'Médecin Praticien';
+      const ageStr = rx.patientAge || parsedNotes.customAge || (p ? calcAge(p) : '—');
+      const genderStr = rx.patientGender || parsedNotes.customGender || (p ? genderLabel(p) : '—');
       const userNotesText = parsedNotes.userNotes;
 
-      const rxNumberStr = String(props.prescriptionNumber).padStart(4, '0');
+      const numVal = rx.prescriptionNumber || props.prescriptionNumber || 1;
+      const rxNumberStr = String(numVal).padStart(4, '0');
 
       return (
         <div class="rx-print-page">
@@ -146,7 +147,6 @@ export default defineComponent({
 
           {/* Medications list */}
           <div class="rx-print-medications-section">
-            <div class="rx-section-watermark">Rx</div>
             <div class="rx-medications-list">
               {meds.map((m, i) => (
                 <div class="rx-medication-item" key={m.id || i}>
@@ -191,12 +191,6 @@ export default defineComponent({
             </div>
           </div>
 
-          {/* Footer */}
-          <div class="rx-print-footer">
-            <span>N° d'agrément : {numAgrement}</span>
-            <span class="rx-print-footer-spacer" />
-            <span>Document généré par la plateforme Centaur Medical le {printedAt}</span>
-          </div>
         </div>
       );
     };

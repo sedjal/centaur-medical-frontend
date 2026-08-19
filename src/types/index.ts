@@ -168,6 +168,9 @@ export interface Prescription {
   medications: PrescriptionMedication[];
   createdAt?: string;
   updatedAt?: string;
+  prescriptionNumber?: number;
+  patientAge?: string | null;
+  patientGender?: string | null;
 }
 
 export interface PrescriptionMedicationInput {
@@ -183,6 +186,9 @@ export interface PrescriptionCreatePayload {
   prescribedAt: string;
   notes?: string | null;
   medications: PrescriptionMedicationInput[];
+  patientAge?: string | null;
+  patientGender?: string | null;
+  doctorName?: string | null;
 }
 
 export type MedicalHistoryEventType =

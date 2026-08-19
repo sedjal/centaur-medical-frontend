@@ -324,7 +324,13 @@ export default defineComponent({
 
         <Modal
           open={Boolean(detail.value)}
-          title={detail.value ? prescriptionTitle(detail.value) : 'Ordonnance'}
+          title={
+            detail.value
+              ? `${prescriptionTitle(detail.value)} (N° OR-${String(
+                  detail.value.prescriptionNumber || getSequentialNumber(detail.value.id)
+                ).padStart(4, '0')})`
+              : 'Ordonnance'
+          }
           size="lg"
           onClose={() => {
             detail.value = null;
