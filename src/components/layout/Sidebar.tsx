@@ -79,7 +79,7 @@ export default defineComponent({
         <div class="sidebar-brand">
           <div class="sidebar-brand-mark">CM</div>
           <div class="sidebar-brand-text">
-            <strong>CENTaUR</strong>
+            <strong>CENTAUR</strong>
             <span>Medical</span>
           </div>
         </div>

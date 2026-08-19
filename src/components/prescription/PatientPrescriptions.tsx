@@ -1,7 +1,7 @@
-import { defineComponent, onMounted, ref, computed, watch } from 'vue';
+import { defineComponent, onMounted, ref, computed, watch, createApp, type PropType } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 import { usePrescriptions } from '../../composables/usePrescriptions';
-import type { Prescription, PrescriptionCreatePayload } from '../../types';
+import type { Prescription, PrescriptionCreatePayload, Patient } from '../../types';
 import { formatDate } from '../../utils/permissions';
 import { prescriptionTitle } from '../../utils/prescriptions';
 import {
@@ -20,6 +20,7 @@ import {
 import { CmIcon } from '../ui/icons';
 import PrescriptionCard from './PrescriptionCard';
 import PrescriptionForm from './PrescriptionForm';
+import PrescriptionPrint from './PrescriptionPrint';
 
 function statusVariant(status: string): BadgeVariant {
   return status === 'ACTIVE' ? 'success' : 'warning';
@@ -29,10 +30,72 @@ function statusLabel(status: string): string {
   return status === 'CANCELLED' ? 'Annulée' : 'Active';
 }
 
+function printPrescription(rx: Prescription, patient: Patient | null, rxNum: number) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'rx-print-wrapper';
+  document.body.appendChild(wrapper);
+
+  const app = createApp(PrescriptionPrint, { prescription: rx, patient, prescriptionNumber: rxNum });
+  app.mount(wrapper);
+
+  requestAnimationFrame(() => {
+    window.print();
+    setTimeout(() => {
+      app.unmount();
+      document.body.removeChild(wrapper);
+    }, 500);
+  });
+}
+
+function downloadPrescriptionPDF(rx: Prescription, patient: Patient | null, rxNum: number) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'rx-print-wrapper rx-pdf-download';
+  document.body.appendChild(wrapper);
+
+  const app = createApp(PrescriptionPrint, { prescription: rx, patient, prescriptionNumber: rxNum });
+  app.mount(wrapper);
+
+  const runHtml2Pdf = () => {
+    const element = wrapper.querySelector('.rx-print-page');
+    if (!element) {
+      app.unmount();
+      document.body.removeChild(wrapper);
+      return;
+    }
+    const opt = {
+      margin:       0,
+      filename:     `Ordonnance_${patient?.last_name || 'Patient'}_${rx.id.slice(0, 8)}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, logging: false },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    // @ts-ignore
+    window.html2pdf().set(opt).from(element).save().then(() => {
+      app.unmount();
+      document.body.removeChild(wrapper);
+    }).catch((err: any) => {
+      console.error(err);
+      app.unmount();
+      document.body.removeChild(wrapper);
+    });
+  };
+
+  // @ts-ignore
+  if (window.html2pdf) {
+    runHtml2Pdf();
+  } else {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = runHtml2Pdf;
+    document.head.appendChild(script);
+  }
+}
+
 export default defineComponent({
   name: 'PatientPrescriptions',
   props: {
     patientId: { type: String, required: true },
+    patient: { type: Object as PropType<Patient | null>, default: null },
   },
   setup(props) {
     const auth = useAuthStore();
@@ -108,6 +171,14 @@ export default defineComponent({
       prescriptions.value.filter((rx) => (rx.medications || []).some((m) => m && m.name))
     );
 
+    const getSequentialNumber = (rxId: string) => {
+      const sorted = [...visible.value].sort(
+        (a, b) => new Date(a.prescribedAt).getTime() - new Date(b.prescribedAt).getTime()
+      );
+      const index = sorted.findIndex((r) => r.id === rxId);
+      return index !== -1 ? index + 1 : 1;
+    };
+
     const columns = computed<DataTableColumn<Prescription>[]>(() => [
       {
         key: 'prescribedAt',
@@ -146,10 +217,25 @@ export default defineComponent({
               onClick={() => {
                 detail.value = row;
               }}
+              title="Voir les détails"
             >
-              <span class="btn-with-icon">
-                <CmIcon name="eye" size={14} /> Voir
-              </span>
+              <CmIcon name="eye" size={14} />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              title="Imprimer directement"
+              onClick={() => printPrescription(row, props.patient, getSequentialNumber(row.id))}
+            >
+              <CmIcon name="print" size={14} />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              title="Télécharger en PDF"
+              onClick={() => downloadPrescriptionPDF(row, props.patient, getSequentialNumber(row.id))}
+            >
+              <CmIcon name="download" size={14} />
             </Button>
             {canCancel.value && row.status === 'ACTIVE' && (
               <Button
@@ -160,10 +246,9 @@ export default defineComponent({
                 onClick={() => {
                   cancelTarget.value = row;
                 }}
+                title="Annuler l'ordonnance"
               >
-                <span class="btn-with-icon">
-                  <CmIcon name="trash" size={14} /> Annuler
-                </span>
+                <CmIcon name="trash" size={14} />
               </Button>
             )}
           </div>
@@ -246,14 +331,44 @@ export default defineComponent({
           }}
         >
           {detail.value && (
-            <PrescriptionCard
-              prescription={detail.value}
-              canCancel={canCancel.value}
-              cancelling={cancellingId.value === detail.value.id}
-              onCancel={() => {
-                cancelTarget.value = detail.value;
-              }}
-            />
+            <>
+              <div class="rx-modal-print-bar">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    printPrescription(detail.value!, props.patient, getSequentialNumber(detail.value!.id))
+                  }
+                >
+                  <span class="btn-with-icon">
+                    <CmIcon name="print" size={14} /> Imprimer
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    downloadPrescriptionPDF(
+                      detail.value!,
+                      props.patient,
+                      getSequentialNumber(detail.value!.id)
+                    )
+                  }
+                >
+                  <span class="btn-with-icon">
+                    <CmIcon name="download" size={14} /> Télécharger
+                  </span>
+                </Button>
+              </div>
+              <PrescriptionCard
+                prescription={detail.value}
+                canCancel={canCancel.value}
+                cancelling={cancellingId.value === detail.value.id}
+                onCancel={() => {
+                  cancelTarget.value = detail.value;
+                }}
+              />
+            </>
           )}
         </Modal>
 
@@ -267,6 +382,7 @@ export default defineComponent({
         >
           <PrescriptionForm
             patientId={props.patientId}
+            patient={props.patient}
             saving={saving.value}
             error={formOpen.value ? actionMessage.value || undefined : undefined}
             onSubmit={submitCreate}

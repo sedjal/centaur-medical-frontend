@@ -14,7 +14,8 @@ export type IconName =
   | 'shield'
   | 'user'
   | 'pill'
-  | 'check';
+  | 'check'
+  | 'print';
 
 const CmIcon = defineComponent({
   name: 'CmIcon',
@@ -75,6 +76,7 @@ const CmIcon = defineComponent({
                 stroke="currentColor"
                 stroke-width="1.8"
                 stroke-linecap="round"
+                stroke-linejoin="round"
               />
             </g>
           ) : null}
@@ -161,6 +163,24 @@ const CmIcon = defineComponent({
               stroke-linecap="round"
               stroke-linejoin="round"
             />
+          ) : null}
+          {n === 'print' ? (
+            <g>
+              <path
+                d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M6 14h12v6H6z"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </g>
           ) : null}
         </svg>
       );

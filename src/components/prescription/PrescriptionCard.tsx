@@ -1,6 +1,6 @@
 import { defineComponent, type PropType } from 'vue';
 import type { Prescription } from '../../types';
-import { formatPrescriptionDate } from '../../utils/prescriptions';
+import { formatPrescriptionDate, parsePrescriptionNotes } from '../../utils/prescriptions';
 import { Badge, Button, type BadgeVariant } from '../ui';
 import { CmIcon } from '../ui/icons';
 
@@ -23,8 +23,11 @@ export default defineComponent({
   setup(props) {
     return () => {
       const rx = props.prescription;
+      const parsed = parsePrescriptionNotes(rx.notes);
       const meds = (rx.medications || []).filter((m) => m && m.name);
       if (!meds.length) return null;
+
+      const docName = parsed.customDoctor || rx.doctorName;
 
       return (
         <div class="rx-card">
@@ -36,7 +39,7 @@ export default defineComponent({
               </span>
               <span class="rx-meta-bar__item">
                 <CmIcon name="user" size={16} />
-                {rx.doctorName ? `Dr ${rx.doctorName}` : 'Médecin non renseigné'}
+                {docName ? `Dr ${docName}` : 'Médecin non renseigné'}
               </span>
               <span class="rx-meta-bar__item">
                 <Badge variant={statusVariant(rx.status)}>
@@ -79,9 +82,9 @@ export default defineComponent({
             </table>
           </div>
 
-          {rx.notes ? (
+          {parsed.userNotes ? (
             <p class="rx-card__notes">
-              <em>Observations</em> {rx.notes}
+              <em>Observations</em> {parsed.userNotes}
             </p>
           ) : null}
 

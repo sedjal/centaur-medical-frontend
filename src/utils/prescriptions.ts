@@ -120,3 +120,40 @@ export function prescriptionApiMessage(
   }
   return parsed.message || 'Une erreur est survenue.';
 }
+
+export interface PrescriptionNotesMeta {
+  userNotes: string;
+  customAge?: string;
+  customGender?: string;
+  customDoctor?: string;
+}
+
+export function parsePrescriptionNotes(notesRaw?: string | null): PrescriptionNotesMeta {
+  if (!notesRaw) {
+    return { userNotes: '' };
+  }
+  const trimmed = notesRaw.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed === 'object' && parsed !== null) {
+        return {
+          userNotes: parsed.userNotes || '',
+          customAge: parsed.customAge,
+          customGender: parsed.customGender,
+          customDoctor: parsed.customDoctor,
+        };
+      }
+    } catch {
+      // fallback to raw text
+    }
+  }
+  return { userNotes: notesRaw };
+}
+
+export function serializePrescriptionNotes(meta: PrescriptionNotesMeta): string {
+  if (!meta.customAge && !meta.customGender && !meta.customDoctor) {
+    return meta.userNotes;
+  }
+  return JSON.stringify(meta);
+}

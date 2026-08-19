@@ -1,18 +1,34 @@
-import { defineComponent, ref, type PropType } from 'vue';
-import type { PrescriptionCreatePayload, PrescriptionMedicationInput } from '../../types';
+import { defineComponent, ref, watch, type PropType } from 'vue';
+import type { PrescriptionCreatePayload, PrescriptionMedicationInput, Patient } from '../../types';
+import { useAuthStore } from '../../stores/auth';
 import {
   emptyMedication,
   toDatetimeLocalValue,
   validatePrescriptionForm,
   buildCreatePayload,
+  serializePrescriptionNotes,
   type PrescriptionFormFieldErrors,
 } from '../../utils/prescriptions';
 import { Input, Button } from '../ui';
+
+function calcAge(patient: Patient): string {
+  const dob = (patient as unknown as Record<string, unknown>)['date_of_birth'] as string | undefined;
+  if (!dob) return '';
+  const diff = Date.now() - new Date(dob).getTime();
+  return `${Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25))} ans`;
+}
+
+function genderLabel(patient: Patient): string {
+  const g = (patient as unknown as Record<string, unknown>)['gender'] as string | undefined;
+  if (!g) return '';
+  return g === 'F' || g === 'FEMME' ? 'Femme' : 'Homme';
+}
 
 export default defineComponent({
   name: 'PrescriptionForm',
   props: {
     patientId: { type: String, required: true },
+    patient: { type: Object as PropType<Patient | null>, default: null },
     saving: { type: Boolean, default: false },
     error: { type: String, default: undefined },
     onSubmit: {
@@ -22,10 +38,37 @@ export default defineComponent({
     onCancel: { type: Function as PropType<() => void>, required: true },
   },
   setup(props) {
+    const auth = useAuthStore();
+
     const prescribedAt = ref(toDatetimeLocalValue());
     const notes = ref('');
     const medications = ref<PrescriptionMedicationInput[]>([emptyMedication()]);
     const fieldErrors = ref<PrescriptionFormFieldErrors>({});
+
+    const customDoctor = ref('');
+    const customAge = ref('');
+    const customGender = ref('Femme');
+
+    watch(
+      () => props.patient,
+      (newPatient) => {
+        if (newPatient) {
+          customAge.value = calcAge(newPatient);
+          customGender.value = genderLabel(newPatient) || 'Femme';
+        }
+      },
+      { immediate: true }
+    );
+
+    watch(
+      () => auth.fullName,
+      (newName) => {
+        if (newName) {
+          customDoctor.value = newName;
+        }
+      },
+      { immediate: true }
+    );
 
     function clearField(key: string) {
       if (!fieldErrors.value[key]) return;
@@ -53,10 +96,17 @@ export default defineComponent({
 
     function submit(e: Event) {
       e.preventDefault();
+      const serializedNotes = serializePrescriptionNotes({
+        userNotes: notes.value,
+        customAge: customAge.value.trim() || undefined,
+        customGender: customGender.value.trim() || undefined,
+        customDoctor: customDoctor.value.trim() || undefined,
+      });
+
       const payload = buildCreatePayload(
         props.patientId,
         prescribedAt.value,
-        notes.value,
+        serializedNotes,
         medications.value
       );
       const errors = validatePrescriptionForm(payload);
@@ -76,17 +126,52 @@ export default defineComponent({
           </p>
         )}
 
-        <Input
-          label="Date de prescription"
-          type="datetime-local"
-          required
-          value={prescribedAt.value}
-          error={fieldErrors.value.prescribedAt}
-          onInput={(v: string) => {
-            prescribedAt.value = v;
-            clearField('prescribedAt');
-          }}
-        />
+        <div class="rx-form__grid" style={{ marginBottom: '16px' }}>
+          <Input
+            label="Date de prescription"
+            type="datetime-local"
+            required
+            value={prescribedAt.value}
+            error={fieldErrors.value.prescribedAt}
+            onInput={(v: string) => {
+              prescribedAt.value = v;
+              clearField('prescribedAt');
+            }}
+          />
+          <Input
+            label="Médecin prescripteur"
+            required
+            value={customDoctor.value}
+            onInput={(v: string) => {
+              customDoctor.value = v;
+            }}
+          />
+        </div>
+
+        <div class="rx-form__grid" style={{ marginBottom: '16px' }}>
+          <Input
+            label="Âge du patient (à afficher)"
+            required
+            value={customAge.value}
+            onInput={(v: string) => {
+              customAge.value = v;
+            }}
+          />
+          <div class="cm-field">
+            <label class="cm-field__label">Sexe du patient (à afficher) *</label>
+            <select
+              class="cm-input"
+              value={customGender.value}
+              onChange={(ev: Event) => {
+                customGender.value = (ev.target as HTMLSelectElement).value;
+              }}
+            >
+              <option value="Femme">Femme</option>
+              <option value="Homme">Homme</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+        </div>
 
         <div class="rx-form__meds">
           <h3 class="rx-form__subtitle">Médicaments</h3>

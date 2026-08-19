@@ -155,7 +155,7 @@ export default defineComponent({
                 </>
               )}
               {tab.value === 'ordonnances' && (
-                <PatientPrescriptions patientId={patient.value.id} />
+                <PatientPrescriptions patientId={patient.value.id} patient={patient.value} />
               )}
             </div>
           </>
