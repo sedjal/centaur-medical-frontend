@@ -11,8 +11,9 @@ import {
   patientFormApiMessage,
   type PatientFormFieldErrors,
 } from '../utils/patientForm';
+import { formatDateOnly } from '../utils/dates';
 import { allowedHospitalServices, serviceLabel } from '../utils/permissions';
-import type { PatientFormModel, ServiceType } from '../types';
+import type { PatientFormModel, ServiceType, SpecialtyData } from '../types';
 import {
   PageHeader,
   Card,
@@ -21,6 +22,7 @@ import {
   Button,
   LoadingState,
   ErrorState,
+  ConfirmDialog,
 } from '../components/ui';
 
 const STATUS_OPTIONS = [
@@ -56,7 +58,8 @@ export default defineComponent({
     const loadFailed = ref(false);
     const ready = ref(!isEdit.value);
     const snapshot = ref('');
-    let suppressServiceReset = false;
+    const loadedService = ref<ServiceType | null>(null);
+    const leaveConfirmOpen = ref(false);
 
     const serviceOptions = computed(() =>
       allowedServices.value.map((s) => ({ value: s, label: serviceLabel(s) }))
@@ -87,6 +90,13 @@ export default defineComponent({
       }
     }
 
+    function patchSpecialty(patch: Partial<SpecialtyData>) {
+      form.value = {
+        ...form.value,
+        specialty: { ...form.value.specialty, ...patch },
+      };
+    }
+
     async function loadPatient() {
       if (!isEdit.value || !patientId.value) {
         ready.value = true;
@@ -99,12 +109,12 @@ export default defineComponent({
       try {
         const p = await fetchPatient(patientId.value);
         if (!p) throw new Error('Patient introuvable');
-        suppressServiceReset = true;
         patientCode.value = p.patient_code;
+        loadedService.value = p.service;
         form.value = {
           firstName: p.first_name,
           lastName: p.last_name,
-          hospitalizationDate: String(p.hospitalization_date).slice(0, 10),
+          hospitalizationDate: formatDateOnly(p.hospitalization_date),
           service: p.service,
           status: p.status || 'STABLE',
           specialty: mapSpecialtyFromApi(p.service, p.specialty),
@@ -114,8 +124,6 @@ export default defineComponent({
       } catch (err) {
         loadFailed.value = true;
         formError.value = patientFormApiMessage(err, 'load');
-      } finally {
-        suppressServiceReset = false;
       }
     }
 
@@ -126,9 +134,14 @@ export default defineComponent({
     watch(
       () => form.value.service,
       (next, prev) => {
-        if (suppressServiceReset || !ready.value) return;
+        if (!ready.value) return;
         if (next === prev) return;
-        form.value.specialty = emptySpecialty();
+        // Ignore the programmatic service set right after loading the patient
+        if (loadedService.value === next) return;
+        form.value = {
+          ...form.value,
+          specialty: emptySpecialty(),
+        };
         fieldErrors.value = {};
       }
     );
@@ -158,6 +171,7 @@ export default defineComponent({
         const payload = buildPayload();
         if (isEdit.value) {
           await updatePatient(patientId.value, payload);
+          loadedService.value = form.value.service;
           takeSnapshot();
           await router.push({ name: 'patient-detail', params: { id: patientId.value } });
         } else {
@@ -177,18 +191,25 @@ export default defineComponent({
       }
     }
 
-    function onCancel() {
-      if (isDirty.value) {
-        const ok = window.confirm(
-          'Vous avez des modifications non enregistrées. Voulez-vous quitter ?'
-        );
-        if (!ok) return;
-      }
+    function navigateAway() {
       if (isEdit.value && patientId.value) {
         void router.push({ name: 'patient-detail', params: { id: patientId.value } });
       } else {
         void router.push({ name: 'patients' });
       }
+    }
+
+    function onCancel() {
+      if (isDirty.value) {
+        leaveConfirmOpen.value = true;
+        return;
+      }
+      navigateAway();
+    }
+
+    function confirmLeave() {
+      leaveConfirmOpen.value = false;
+      navigateAway();
     }
 
     function onBack() {
@@ -210,7 +231,7 @@ export default defineComponent({
               value={sp.arrivalTime || ''}
               error={err.arrivalTime}
               onInput={(v: string) => {
-                form.value.specialty.arrivalTime = v;
+                patchSpecialty({ arrivalTime: v });
                 clearField('arrivalTime');
               }}
             />
@@ -220,7 +241,7 @@ export default defineComponent({
               value={sp.triageLevel || ''}
               error={err.triageLevel}
               onInput={(v: string) => {
-                form.value.specialty.triageLevel = v;
+                patchSpecialty({ triageLevel: v });
                 clearField('triageLevel');
               }}
             />
@@ -230,7 +251,7 @@ export default defineComponent({
               value={sp.initialSeverity || ''}
               error={err.initialSeverity}
               onInput={(v: string) => {
-                form.value.specialty.initialSeverity = v;
+                patchSpecialty({ initialSeverity: v });
                 clearField('initialSeverity');
               }}
             />
@@ -247,7 +268,7 @@ export default defineComponent({
               value={sp.tumorType || ''}
               error={err.tumorType}
               onInput={(v: string) => {
-                form.value.specialty.tumorType = v;
+                patchSpecialty({ tumorType: v });
                 clearField('tumorType');
               }}
             />
@@ -257,7 +278,7 @@ export default defineComponent({
               value={sp.stage || ''}
               error={err.stage}
               onInput={(v: string) => {
-                form.value.specialty.stage = v;
+                patchSpecialty({ stage: v });
                 clearField('stage');
               }}
             />
@@ -267,7 +288,7 @@ export default defineComponent({
               value={sp.currentTreatment || ''}
               error={err.currentTreatment}
               onInput={(v: string) => {
-                form.value.specialty.currentTreatment = v;
+                patchSpecialty({ currentTreatment: v });
                 clearField('currentTreatment');
               }}
             />
@@ -284,7 +305,7 @@ export default defineComponent({
               value={sp.ecgResults || ''}
               error={err.ecgResults}
               onInput={(v: string) => {
-                form.value.specialty.ecgResults = v;
+                patchSpecialty({ ecgResults: v });
                 clearField('ecgResults');
               }}
             />
@@ -295,7 +316,9 @@ export default defineComponent({
               value={sp.restingHeartRate != null ? String(sp.restingHeartRate) : ''}
               error={err.restingHeartRate}
               onInput={(v: string) => {
-                form.value.specialty.restingHeartRate = v === '' ? undefined : Number(v);
+                patchSpecialty({
+                  restingHeartRate: v === '' ? undefined : Number(v),
+                });
                 clearField('restingHeartRate');
               }}
             />
@@ -305,7 +328,7 @@ export default defineComponent({
               value={sp.bloodPressure || ''}
               error={err.bloodPressure}
               onInput={(v: string) => {
-                form.value.specialty.bloodPressure = v;
+                patchSpecialty({ bloodPressure: v });
                 clearField('bloodPressure');
               }}
             />
@@ -325,7 +348,7 @@ export default defineComponent({
             rows={4}
             value={sp.notes || ''}
             onInput={(ev: Event) => {
-              form.value.specialty.notes = (ev.target as HTMLTextAreaElement).value;
+              patchSpecialty({ notes: (ev.target as HTMLTextAreaElement).value });
               clearField('notes');
             }}
           />
@@ -457,6 +480,19 @@ export default defineComponent({
             </div>
           </form>
         )}
+
+        <ConfirmDialog
+          open={leaveConfirmOpen.value}
+          title="Quitter sans enregistrer ?"
+          message="Vous avez des modifications non enregistrées. Voulez-vous quitter cette page ?"
+          confirmLabel="Quitter"
+          cancelLabel="Rester sur la page"
+          danger
+          onConfirm={confirmLeave}
+          onCancel={() => {
+            leaveConfirmOpen.value = false;
+          }}
+        />
       </div>
     );
   },

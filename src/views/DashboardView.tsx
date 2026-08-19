@@ -112,7 +112,7 @@ export default defineComponent({
         {
           key: 'hospitalization_date',
           label: 'Date',
-          render: (row) => formatDate(String(row.hospitalization_date)),
+          render: (row) => formatDate(row.hospitalization_date),
         },
       ];
 

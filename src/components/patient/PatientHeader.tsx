@@ -71,7 +71,7 @@ export default defineComponent({
             <div class="patient-header__aside">
               <p class="patient-header__date">
                 <CmIcon name="calendar" size={16} />
-                Hospitalisé depuis {formatDate(String(p.hospitalization_date))}
+                Hospitalisé depuis {formatDate(p.hospitalization_date)}
               </p>
               {(props.canUpdate || props.canDelete) && (
                 <div class="patient-header__actions">

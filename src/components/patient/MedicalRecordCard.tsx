@@ -1,6 +1,6 @@
 import { defineComponent, type PropType } from 'vue';
 import type { Patient, ServiceType, SpecialtyData } from '../../types';
-import { mapSpecialtyFromApi } from '../../utils/patientForm';
+import { mapSpecialtyFromApi, normalizeTimeForInput } from '../../utils/patientForm';
 import { serviceLabel } from '../../utils/permissions';
 import { Card, EmptyState } from '../ui';
 import { CmIcon } from '../ui/icons';
@@ -13,7 +13,7 @@ function display(value: string | number | null | undefined): string {
 function fieldsForService(service: ServiceType, sp: SpecialtyData) {
   if (service === 'URGENCE') {
     return [
-      { label: "Heure d'arrivée", value: display(sp.arrivalTime) },
+      { label: "Heure d'arrivée", value: display(normalizeTimeForInput(sp.arrivalTime)) },
       { label: 'Niveau de triage', value: display(sp.triageLevel) },
       { label: 'Sévérité initiale', value: display(sp.initialSeverity) },
     ];

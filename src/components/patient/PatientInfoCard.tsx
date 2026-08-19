@@ -49,7 +49,7 @@ export default defineComponent({
                 <Badge variant={statusBadgeVariant(p.status)}>{statusLabel(p.status)}</Badge>
               </dd>
             </div>
-            <Field label="Date d'hospitalisation" value={formatDate(String(p.hospitalization_date))} />
+            <Field label="Date d'hospitalisation" value={formatDate(p.hospitalization_date)} />
           </dl>
         </Card>
       );

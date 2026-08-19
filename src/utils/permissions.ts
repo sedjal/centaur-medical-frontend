@@ -1,4 +1,5 @@
 import type { Permission, ServiceType } from '../types';
+import { formatDateFr } from './dates';
 
 export const HOSPITAL_SERVICES: ServiceType[] = [
   'GENERAL',
@@ -38,8 +39,7 @@ export function initials(first?: string, last?: string): string {
 }
 
 export function formatDate(value?: string): string {
-  if (!value) return '—';
-  return String(value).slice(0, 10);
+  return formatDateFr(value);
 }
 
 export function isCritical(status?: string): boolean {

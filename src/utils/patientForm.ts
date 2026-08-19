@@ -1,5 +1,37 @@
 import type { ServiceType, SpecialtyData, PatientFormModel } from '../types';
 import { parseApiError } from '../api/client';
+import { formatDateOnly, todayLocalDate } from './dates';
+
+/** PostgreSQL TIME → valeur compatible `<input type="time">` (HH:mm). */
+export function normalizeTimeForInput(value: unknown): string {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    const iso = trimmed.match(/T(\d{2}):(\d{2})/);
+    if (iso) return `${iso[1]}:${iso[2]}`;
+    const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+    if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
+    return trimmed;
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const h = value.getHours().toString().padStart(2, '0');
+    const m = value.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
+  return String(value);
+}
+
+/** HH:mm ou HH:mm:ss → HH:mm:ss pour l'API / PostgreSQL TIME. */
+export function normalizeTimeForApi(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return trimmed;
+  const hh = match[1].padStart(2, '0');
+  const mm = match[2];
+  const ss = match[3] ?? '00';
+  return `${hh}:${mm}:${ss}`;
+}
 
 export function emptySpecialty(): SpecialtyData {
   return {
@@ -20,29 +52,33 @@ export function mapSpecialtyFromApi(
   service: ServiceType,
   raw: SpecialtyData | null | undefined
 ): SpecialtyData {
+  const base = emptySpecialty();
   const s = raw || {};
   if (service === 'URGENCE') {
     return {
-      arrivalTime: s.arrivalTime || s.arrival_time || '',
-      triageLevel: s.triageLevel || s.triage_level || '',
-      initialSeverity: s.initialSeverity || s.initial_severity || '',
+      ...base,
+      arrivalTime: normalizeTimeForInput(s.arrivalTime ?? s.arrival_time),
+      triageLevel: String(s.triageLevel ?? s.triage_level ?? '').trim(),
+      initialSeverity: String(s.initialSeverity ?? s.initial_severity ?? '').trim(),
     };
   }
   if (service === 'ONCOLOGIE') {
     return {
-      tumorType: s.tumorType || s.tumor_type || '',
-      stage: s.stage || '',
-      currentTreatment: s.currentTreatment || s.current_treatment || '',
+      ...base,
+      tumorType: String(s.tumorType ?? s.tumor_type ?? '').trim(),
+      stage: String(s.stage ?? '').trim(),
+      currentTreatment: String(s.currentTreatment ?? s.current_treatment ?? '').trim(),
     };
   }
   if (service === 'CARDIOLOGIE') {
     return {
-      ecgResults: s.ecgResults || s.ecg_results || '',
+      ...base,
+      ecgResults: String(s.ecgResults ?? s.ecg_results ?? '').trim(),
       restingHeartRate: s.restingHeartRate ?? s.resting_heart_rate,
-      bloodPressure: s.bloodPressure || s.blood_pressure || '',
+      bloodPressure: String(s.bloodPressure ?? s.blood_pressure ?? '').trim(),
     };
   }
-  return { notes: s.notes || '' };
+  return { ...base, notes: String(s.notes ?? '').trim() };
 }
 
 /** Ne conserve que les champs du service courant (évite d’envoyer des données incohérentes). */
@@ -52,7 +88,7 @@ export function specialtyPayloadForService(
 ): SpecialtyData {
   if (service === 'URGENCE') {
     return {
-      arrivalTime: data.arrivalTime?.trim() || '',
+      arrivalTime: normalizeTimeForApi(data.arrivalTime?.trim() || ''),
       triageLevel: data.triageLevel?.trim() || '',
       initialSeverity: data.initialSeverity?.trim() || '',
     };
@@ -189,7 +225,7 @@ export function createEmptyPatientForm(service: ServiceType = 'GENERAL'): Patien
   return {
     firstName: '',
     lastName: '',
-    hospitalizationDate: new Date().toISOString().slice(0, 10),
+    hospitalizationDate: todayLocalDate(),
     service,
     status: 'STABLE',
     specialty: emptySpecialty(),

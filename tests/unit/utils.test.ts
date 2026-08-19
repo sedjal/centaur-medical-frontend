@@ -13,6 +13,8 @@ import {
 import {
   emptySpecialty,
   mapSpecialtyFromApi,
+  normalizeTimeForInput,
+  normalizeTimeForApi,
   validateSpecialty,
   validatePatientForm,
   specialtyPayloadForService,
@@ -20,6 +22,7 @@ import {
   createEmptyPatientForm,
 } from '../../src/utils/patientForm';
 import { occupancyPercent, serviceCountRows, formatLastUpdated } from '../../src/utils/dashboard';
+import { formatDateOnly, formatDateFr } from '../../src/utils/dates';
 import {
   validatePrescriptionForm,
   buildCreatePayload,
@@ -79,10 +82,18 @@ test('serviceLabel()', (t) => {
   t.end();
 });
 
-test('initials / formatDate / isCritical', (t) => {
+test('formatDate / formatDateOnly sans décalage fuseau', (t) => {
+  t.equal(formatDateFr('2026-08-17'), '17/08/2026');
+  t.equal(formatDateFr('2026-08-17T00:00:00.000Z'), '17/08/2026');
+  t.equal(formatDateOnly('2026-08-17T00:00:00.000Z'), '2026-08-17');
+  t.equal(formatDateOnly(new Date(2026, 8, 19)), '2026-09-19');
+  t.equal(formatDateFr('2026-09-19'), '19/09/2026');
+  t.equal(formatDate(undefined), '—');
+  t.end();
+});
+
+test('initials / isCritical', (t) => {
   t.equal(initials('Ahmed', 'Benali'), 'AB');
-  t.equal(formatDate('2026-08-11T00:00:00.000Z'), '2026-08-11');
-  t.equal(formatDate(), '—');
   t.equal(isCritical('CRITICAL'), true);
   t.equal(isCritical('STABLE'), false);
   t.end();
@@ -96,6 +107,16 @@ test('patientForm: empty + map + validate', (t) => {
     initial_severity: 'Critical',
   });
   t.equal(urg.arrivalTime, '10:00');
+  const urgDbTime = mapSpecialtyFromApi('URGENCE', {
+    arrival_time: '14:30:00',
+    triage_level: '2',
+    initial_severity: 'Modérée',
+  });
+  t.equal(urgDbTime.arrivalTime, '14:30');
+  t.equal(normalizeTimeForApi('08:30'), '08:30:00');
+  t.equal(normalizeTimeForApi('08:30:45'), '08:30:45');
+  t.equal(normalizeTimeForInput('14:30:00'), '14:30');
+  t.equal(normalizeTimeForInput('1970-01-01T14:30:00.000Z'), '14:30');
   t.equal(
     mapSpecialtyFromApi('ONCOLOGIE', { tumor_type: 'A', stage: 'II', current_treatment: 'chemo' })
       .tumorType,
@@ -200,7 +221,7 @@ test('patientForm: validatePatientForm champs obligatoires FR', (t) => {
       triageLevel: '2',
       initialSeverity: 'ok',
     }).arrivalTime,
-    '08:00'
+    '08:00:00'
   );
   t.equal(
     specialtyPayloadForService('ONCOLOGIE', { tumorType: 'X', stage: 'I', currentTreatment: 'Y' })
