@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import * as authApi from '../services/auth';
 import type { AuthUser, Permission } from '../types';
+import { parseApiError } from '../api/client';
 import { teardownNotificationStream } from '../composables/useNotifications';
 
 export const useAuthStore = defineStore('auth', () => {
@@ -58,9 +59,18 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function refreshSession() {
     if (!token.value) return null;
-    const result = await authApi.refreshSession();
-    setSession(result.token, result.user);
-    return result;
+    try {
+      const result = await authApi.refreshSession();
+      setSession(result.token, result.user);
+      return result;
+    } catch (e: unknown) {
+      // 401 déjà géré par l’intercepteur (notice + logout) — ne pas faire planter l’UI
+      const parsed = parseApiError(e);
+      if (parsed.status !== 401) {
+        console.error('[Centaur Medical] refresh session:', parsed.message);
+      }
+      return null;
+    }
   }
 
   async function login(email: string, password: string) {
@@ -85,10 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('centaur_temp_token', result.tempToken);
       return { status: 'CHANGE_PASSWORD' as const, tempToken: result.tempToken };
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Échec de connexion';
-      error.value = msg;
+      error.value = parseApiError(e).message;
       throw e;
     } finally {
       loading.value = false;
@@ -105,10 +112,7 @@ export const useAuthStore = defineStore('auth', () => {
       setSession(result.token, result.user);
       return result;
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Vérification MFA échouée';
-      error.value = msg;
+      error.value = parseApiError(e).message;
       throw e;
     } finally {
       loading.value = false;
@@ -132,10 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
       tempToken.value = null;
       return { status: 'REQUIRES_MFA' as const, email: result.email };
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Changement de mot de passe impossible';
-      error.value = msg;
+      error.value = parseApiError(e).message;
       throw e;
     } finally {
       loading.value = false;
@@ -148,10 +149,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await authApi.forgotPassword(email);
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Demande impossible';
-      error.value = msg;
+      error.value = parseApiError(e).message;
       throw e;
     } finally {
       loading.value = false;
@@ -165,10 +163,7 @@ export const useAuthStore = defineStore('auth', () => {
       const result = await authApi.verifyResetCode(email, code);
       return result.resetToken;
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Code invalide';
-      error.value = msg;
+      error.value = parseApiError(e).message;
       throw e;
     } finally {
       loading.value = false;
@@ -181,10 +176,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await authApi.resetPassword(resetTokenValue, newPassword);
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Réinitialisation impossible';
-      error.value = msg;
+      error.value = parseApiError(e).message;
       throw e;
     } finally {
       loading.value = false;

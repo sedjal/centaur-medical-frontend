@@ -88,7 +88,9 @@ test('intégration LoginView: CHANGE_PASSWORD → /change-password', async (t) =
 
 test('intégration LoginView: mauvais mot de passe → alerte, reste sur login', async (t) => {
   localStorage.clear();
+  sessionStorage.clear();
   const stub = sinon.stub(api, 'post').rejects({
+    config: { url: '/auth/login' },
     response: { status: 401, data: { error: 'Invalid credentials' } },
   });
 
@@ -97,7 +99,7 @@ test('intégration LoginView: mauvais mot de passe → alerte, reste sur login',
     await fillLogin(wrapper, 'doctor@test.com', 'Wrong');
 
     t.equal(router.currentRoute.value.name, 'login');
-    t.match(wrapper.text(), /Invalid credentials|Échec de connexion/);
+    t.match(wrapper.text(), /Email ou mot de passe incorrect/i);
     wrapper.unmount();
   } finally {
     stub.restore();

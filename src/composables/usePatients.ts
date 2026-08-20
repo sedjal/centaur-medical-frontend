@@ -7,12 +7,7 @@ import { useApiError } from './useApiError';
 const DISPLAY_PAGE_SIZE = 5;  // rows shown per page in the UI
 const FETCH_CHUNK_SIZE = 50;  // rows fetched from backend per request
 
-/**
- * État local patients.
- * Stratégie : on charge 50 par chunk depuis le backend,
- * on affiche 5 par page localement (pas de requête à chaque flip de page).
- * La recherche repart toujours du backend (chunk 1) pour couvrir tous les enregistrements.
- */
+
 export function usePatients() {
   // full buffer fetched from backend
   const allPatients = ref<Patient[]>([]);
@@ -29,8 +24,9 @@ export function usePatients() {
 
   /** Items visible on the current display page */
   const patients = computed<Patient[]>(() => {
+    const list = Array.isArray(allPatients.value) ? allPatients.value : [];
     const start = (displayPage.value - 1) * DISPLAY_PAGE_SIZE;
-    return allPatients.value.slice(start, start + DISPLAY_PAGE_SIZE);
+    return list.slice(start, start + DISPLAY_PAGE_SIZE);
   });
 
   const currentPage = computed(() => displayPage.value);
@@ -54,13 +50,14 @@ export function usePatients() {
         limit: FETCH_CHUNK_SIZE,
       });
       if (resetBuffer) {
-        allPatients.value = result.items;
+        allPatients.value = Array.isArray(result?.items) ? result.items : [];
         displayPage.value = 1;
       } else {
-        allPatients.value = [...allPatients.value, ...result.items];
+        const next = Array.isArray(result?.items) ? result.items : [];
+        allPatients.value = [...allPatients.value, ...next];
       }
-      totalPatients.value = result.total;
-      backendPage.value = result.page;
+      totalPatients.value = Number(result?.total ?? allPatients.value.length);
+      backendPage.value = Number(result?.page ?? chunkPage);
       return result;
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'CanceledError') return;

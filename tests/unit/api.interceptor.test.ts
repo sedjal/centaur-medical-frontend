@@ -7,7 +7,7 @@ import test from 'tape';
 import { AxiosError } from 'axios';
 import type { AxiosAdapter, InternalAxiosRequestConfig } from 'axios';
 import api from '../../src/services/api';
-import { setUnauthorizedHandler } from '../../src/api/client';
+import { setUnauthorizedHandler, ApiError } from '../../src/api/client';
 
 const originalAdapter = api.defaults.adapter;
 
@@ -146,6 +146,22 @@ test('interceptor: 401 appelle unauthorizedHandler (logout)', async (t) => {
     t.equal(localStorage.getItem('centaur_token'), null);
   }
   setUnauthorizedHandler(null);
+  api.defaults.adapter = originalAdapter;
+  t.end();
+});
+
+test('interceptor: 401 rejette une ApiError (pas Axios brut)', async (t) => {
+  localStorage.clear();
+  localStorage.setItem('centaur_token', 'access-jwt');
+  setHash('/dashboard');
+  api.defaults.adapter = failAdapter(401);
+  try {
+    await api.get('/patients');
+    t.fail('aurait dû throw');
+  } catch (err) {
+    t.ok(err instanceof ApiError);
+    t.match((err as Error).message, /Session expirée|reconnecter/i);
+  }
   api.defaults.adapter = originalAdapter;
   t.end();
 });

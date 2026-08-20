@@ -16,8 +16,16 @@ export interface PatientListResult {
 }
 
 export async function getPatients(params?: PatientListParams): Promise<PatientListResult> {
-  const { data } = await api.get<PatientListResult>('/patients', { params });
-  return data;
+  const { data } = await api.get<PatientListResult | Patient[]>('/patients', { params });
+  if (Array.isArray(data)) {
+    return { items: data, total: data.length, page: 1, limit: data.length || 50 };
+  }
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    total: Number(data?.total ?? 0),
+    page: Number(data?.page ?? 1),
+    limit: Number(data?.limit ?? 50),
+  };
 }
 
 export async function getPatient(id: string) {

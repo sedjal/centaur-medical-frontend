@@ -112,18 +112,19 @@ test('auth store: verifyMfa', async (t) => {
   t.end();
 });
 
-test('auth store: login 401 renseigne error', async (t) => {
+test('auth store: login 401 renseigne error FR', async (t) => {
   setActivePinia(createPinia());
   localStorage.clear();
   const stub = sinon.stub(api, 'post').rejects({
-    response: { data: { error: 'Invalid credentials' } },
+    config: { url: '/auth/login' },
+    response: { status: 401, data: { error: 'Invalid credentials' } },
   });
   const store = useAuthStore();
   try {
     await store.login('a@b.c', 'wrong');
     t.fail('aurait dû throw');
   } catch {
-    t.equal(store.error, 'Invalid credentials');
+    t.match(store.error || '', /Email ou mot de passe incorrect/i);
     t.equal(store.token, null);
   }
   stub.restore();

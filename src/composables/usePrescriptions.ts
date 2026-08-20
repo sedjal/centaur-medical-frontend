@@ -29,8 +29,9 @@ export function usePrescriptions() {
 
   /** Items visible on current display page */
   const prescriptions = computed<Prescription[]>(() => {
+    const list = Array.isArray(allPrescriptions.value) ? allPrescriptions.value : [];
     const start = (displayPage.value - 1) * DISPLAY_PAGE_SIZE;
-    return allPrescriptions.value.slice(start, start + DISPLAY_PAGE_SIZE);
+    return list.slice(start, start + DISPLAY_PAGE_SIZE);
   });
 
   const currentPage = computed(() => displayPage.value);
@@ -56,13 +57,14 @@ export function usePrescriptions() {
         limit: FETCH_CHUNK_SIZE,
       });
       if (resetBuffer) {
-        allPrescriptions.value = result.items;
+        allPrescriptions.value = Array.isArray(result?.items) ? result.items : [];
         displayPage.value = 1;
       } else {
-        allPrescriptions.value = [...allPrescriptions.value, ...result.items];
+        const next = Array.isArray(result?.items) ? result.items : [];
+        allPrescriptions.value = [...allPrescriptions.value, ...next];
       }
-      totalPrescriptions.value = result.total;
-      backendPage.value = result.page;
+      totalPrescriptions.value = Number(result?.total ?? allPrescriptions.value.length);
+      backendPage.value = Number(result?.page ?? chunkPage);
       return result;
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'CanceledError') return;

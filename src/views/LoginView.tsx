@@ -1,6 +1,7 @@
 import { defineComponent, ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { consumeAuthNotice } from '../api/client';
 
 export default defineComponent({
   name: 'LoginView',
@@ -11,16 +12,19 @@ export default defineComponent({
     const auth = useAuthStore();
     const router = useRouter();
     const localError = ref<string | null>(null);
+    const sessionNotice = ref<string | null>(null);
 
     onMounted(() => {
       const q = route.query.email;
       const fromQuery = Array.isArray(q) ? String(q[0] || '') : String(q || '');
       if (fromQuery) email.value = fromQuery;
+      sessionNotice.value = consumeAuthNotice();
     });
 
     async function onSubmit(e: Event) {
       e.preventDefault();
       localError.value = null;
+      sessionNotice.value = null;
       try {
         const result = await auth.login(email.value.trim(), password.value);
         if (result.status === 'REQUIRES_MFA') {
@@ -33,7 +37,7 @@ export default defineComponent({
         }
         await router.push({ name: 'dashboard' });
       } catch {
-        localError.value = auth.error || 'Échec de connexion';
+        localError.value = auth.error || 'Email ou mot de passe incorrect.';
       }
     }
 
@@ -57,9 +61,18 @@ export default defineComponent({
           </div>
           <h1 style="margin:0 0 8px;font-size:24px">Connexion</h1>
           <p style="margin:0 0 24px;color:var(--muted);font-size:14px">
-            
+            Connectez-vous pour accéder aux dossiers médicaux.
           </p>
-          {localError.value && <div class="alert alert-error">{localError.value}</div>}
+          {sessionNotice.value && (
+            <div class="alert alert-error" role="alert">
+              {sessionNotice.value}
+            </div>
+          )}
+          {localError.value && (
+            <div class="alert alert-error" role="alert">
+              {localError.value}
+            </div>
+          )}
           <form onSubmit={onSubmit}>
             <div class="field">
               <label>Email</label>

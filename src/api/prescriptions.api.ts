@@ -19,8 +19,16 @@ export interface PrescriptionListResult {
 }
 
 export async function getPrescriptions(params?: PrescriptionListParams): Promise<PrescriptionListResult> {
-  const { data } = await api.get<PrescriptionListResult>('/prescriptions', { params });
-  return data;
+  const { data } = await api.get<PrescriptionListResult | Prescription[]>('/prescriptions', { params });
+  if (Array.isArray(data)) {
+    return { items: data, total: data.length, page: 1, limit: data.length || 50 };
+  }
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    total: Number(data?.total ?? 0),
+    page: Number(data?.page ?? 1),
+    limit: Number(data?.limit ?? 50),
+  };
 }
 
 export async function getPrescription(id: string) {

@@ -86,6 +86,20 @@ test('parseApiError: 401', (t) => {
   t.end();
 });
 
+test('parseApiError: 401 login → identifiants incorrects', (t) => {
+  const err = new AxiosError('Unauthorized');
+  err.config = { url: '/auth/login' } as InternalAxiosRequestConfig;
+  err.response = {
+    data: { error: 'Invalid credentials' },
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: {},
+    config: err.config,
+  };
+  t.match(parseApiError(err).message, /Email ou mot de passe incorrect/i);
+  t.end();
+});
+
 test('parseApiError: 500', (t) => {
   const err = new AxiosError('Server');
   err.response = {
@@ -181,23 +195,28 @@ test('useApiError: setError / clearError', (t) => {
 });
 
 test('usePatients: success fetchPatients', async (t) => {
-  const sample = [
-    {
-      id: 'p1',
-      patient_code: 'CM-001',
-      first_name: 'Ahmed',
-      last_name: 'Benali',
-      hospitalization_date: '2026-08-11',
-      service: 'URGENCE',
-      status: 'STABLE',
-    },
-  ];
+  const sample = {
+    items: [
+      {
+        id: 'p1',
+        patient_code: 'CM-001',
+        first_name: 'Ahmed',
+        last_name: 'Benali',
+        hospitalization_date: '2026-08-11',
+        service: 'URGENCE',
+        status: 'STABLE',
+      },
+    ],
+    total: 1,
+    page: 1,
+    limit: 50,
+  };
   api.defaults.adapter = okAdapter(sample);
   const { patients, loading, errorMessage, fetchPatients } = usePatients();
   const result = await fetchPatients({ service: 'URGENCE' });
   t.equal(loading.value, false);
   t.equal(errorMessage.value, null);
-  t.equal(result.length, 1);
+  t.equal(result?.items.length, 1);
   t.equal(patients.value[0].first_name, 'Ahmed');
   api.defaults.adapter = originalAdapter;
   t.end();
@@ -231,17 +250,22 @@ test('usePatients: error 404', async (t) => {
 });
 
 test('usePatients: deletePatient retire de la liste', async (t) => {
-  const list = [
-    {
-      id: 'p1',
-      patient_code: 'CM-001',
-      first_name: 'A',
-      last_name: 'B',
-      hospitalization_date: '2026-08-11',
-      service: 'URGENCE',
-      status: 'STABLE',
-    },
-  ];
+  const list = {
+    items: [
+      {
+        id: 'p1',
+        patient_code: 'CM-001',
+        first_name: 'A',
+        last_name: 'B',
+        hospitalization_date: '2026-08-11',
+        service: 'URGENCE',
+        status: 'STABLE',
+      },
+    ],
+    total: 1,
+    page: 1,
+    limit: 50,
+  };
   api.defaults.adapter = okAdapter(list);
   const { patients, fetchPatients, deletePatient } = usePatients();
   await fetchPatients();
